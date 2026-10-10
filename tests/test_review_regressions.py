@@ -146,3 +146,33 @@ async def test_06_password_change_revokes_issued_tokens(client: httpx.AsyncClien
     relogin = await client.post("/api/auth/login", json={"email": "victim@clinic.test", "password": "NewPassword456"})
     fresh = {"Authorization": f"Bearer {relogin.json()['access_token']}"}
     assert (await client.get("/api/auth/me", headers=fresh)).status_code == 200
+
+
+async def test_07_doctor_lists_only_own_patients_in_one_request(
+    client: httpx.AsyncClient, session, make_user, make_doctor, auth, now: datetime
+):
+    registrar = await make_user(UserRole.REGISTRAR)
+    doctor = await make_doctor()
+    doctor_user = await session.get(User, doctor.user_id)
+    own, foreign = await _patient(session, "5"), await _patient(session, "6")
+    starts_at = now + timedelta(hours=1)
+    booked = await client.post(
+        "/api/appointments",
+        json={
+            "doctor_id": doctor.id,
+            "patient_id": own.id,
+            "starts_at": starts_at.isoformat(),
+            "ends_at": (starts_at + timedelta(minutes=30)).isoformat(),
+        },
+        headers=auth(registrar),
+    )
+    assert booked.status_code == 201, booked.text
+    patient_user = await make_user(UserRole.PATIENT)
+
+    listed = await client.get("/api/patients", headers=auth(doctor_user))
+    forbidden = await client.get("/api/patients", headers=auth(patient_user))
+
+    assert listed.status_code == 200
+    assert [p["id"] for p in listed.json()] == [own.id]
+    assert foreign.id not in {p["id"] for p in listed.json()}
+    assert forbidden.status_code == 403

@@ -1086,10 +1086,12 @@
     const err = $('d-pat-error');
     clearError(err);
     try {
-      const appointments = await fetchAll('/api/appointments');
-      const patients = (await Promise.all(unique(appointments.map((a) => a.patient_id)).map((id) => getPatient(id))))
-        .filter(Boolean)
+      // Сервер сам ограничивает список пациентами этого врача. Раньше здесь выгружались
+      // все записи врача (не больше 500, от старых к новым) и пациенты запрашивались по
+      // одному: у загруженного врача новые пациенты молча пропадали из списка.
+      const patients = (await fetchAll('/api/patients', {}, 5000))
         .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'));
+      patients.forEach((p) => state.patientMap.set(p.id, p));
       select.replaceChildren(h('option', { value: '', text: '— выберите пациента —' }),
         ...patients.map((p) => h('option', { value: String(p.id), text: `${p.full_name}, ${formatDate(p.birth_date)}` })));
       const wanted = state.pendingPatientId;

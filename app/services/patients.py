@@ -2,7 +2,8 @@
 
 Права на уровне объектов:
 
-* admin / registrar - любой пациент; список, создание и изменение - только они;
+* admin / registrar - любой пациент; создание и изменение - только они; список - они и врач
+  (врачу - только свои пациенты);
 * doctor - только пациент, у которого есть хотя бы одна запись к этому врачу в любом
   статусе, кроме ``cancelled``; иначе 404 (чужой пациент неотличим от несуществующего);
 * patient - только свой профиль (``/me`` или собственный id; чужой id - 404).
@@ -54,9 +55,18 @@ def _visibility_clause(actor: Actor) -> ColumnElement[bool] | None:
 
 
 async def list_patients(session: AsyncSession, user: User, q: str | None, *, limit: int, offset: int) -> list[Patient]:
-    """Список пациентов (admin / registrar); ``q`` - подстрока ФИО (без учёта регистра) или номера полиса."""
-    _ensure_staff(user)
+    """Список пациентов; ``q`` - подстрока ФИО (без учёта регистра) или номера полиса.
+
+    admin / registrar видят всех; врач - только своих пациентов (те же правила, что у
+    ``get_patient``): так интерфейсу врача не нужно выгружать все записи и запрашивать
+    пациентов по одному.
+    """
+    if user.role not in STAFF_ROLES and user.role != UserRole.DOCTOR:
+        raise PermissionDeniedError("Insufficient permissions to list patients")
     stmt = select(Patient)
+    clause = _visibility_clause(await load_actor(session, user))
+    if clause is not None:
+        stmt = stmt.where(clause)
     term = (q or "").strip()
     if term:
         stmt = stmt.where(

@@ -26,13 +26,13 @@ router = APIRouter(prefix="/api", tags=["patients"])
 
 @router.get("/patients", response_model=list[PatientOut])
 async def list_patients(
-    user: StaffUser,
+    user: CurrentUser,
     session: SessionDep,
     q: SearchQuery = None,
     limit: LimitQuery = 20,
     offset: OffsetQuery = 0,
 ) -> list[Patient]:
-    """Поиск пациентов (admin, registrar): ``q`` - подстрока ФИО или номера полиса."""
+    """Поиск пациентов: admin, registrar - все; врач - только свои. ``q`` - подстрока ФИО или номера полиса."""
     return await service.list_patients(session, user, q, limit=limit, offset=offset)
 
 
