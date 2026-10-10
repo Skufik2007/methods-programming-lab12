@@ -12,8 +12,14 @@ from fastapi import FastAPI
 
 from app.db import dispose_engine
 from app.errors import register_exception_handlers
+from app.routers import analytics as analytics_router
 from app.routers import appointments as appointments_router
 from app.routers import auth as auth_router
+from app.routers import doctors as doctors_router
+from app.routers import medical_records as medical_records_router
+from app.routers import patients as patients_router
+from app.routers import prescriptions as prescriptions_router
+from app.routers import users as users_router
 
 
 @asynccontextmanager
@@ -31,6 +37,12 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     app.include_router(auth_router.router)
     app.include_router(appointments_router.router)
+    app.include_router(users_router.router)
+    app.include_router(doctors_router.router)
+    app.include_router(patients_router.router)
+    app.include_router(prescriptions_router.router)
+    app.include_router(medical_records_router.router)
+    app.include_router(analytics_router.router)
 
     @app.get("/api/health", tags=["system"])
     async def health() -> dict[str, str]:
