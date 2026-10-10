@@ -134,14 +134,32 @@ def test_available_minutes_reversed_dates_raises():
         (date(2028, 2, 29), date(2028, 2, 29), 1),  # 29 февраля (вторник)
         (date(2026, 10, 31), date(2026, 11, 2), 1),  # сб-пн через границу месяца
     ],
-    ids=["mon", "fri", "sat", "sun", "weekend", "sat_to_mon", "mon_fri", "exact_week", "wed_to_tue",
-         "week_plus_1", "13_days", "two_weeks_from_thu", "fri_to_sun_next", "new_year", "leap_day", "month_boundary"],
+    ids=[
+        "mon",
+        "fri",
+        "sat",
+        "sun",
+        "weekend",
+        "sat_to_mon",
+        "mon_fri",
+        "exact_week",
+        "wed_to_tue",
+        "week_plus_1",
+        "13_days",
+        "two_weeks_from_thu",
+        "fri_to_sun_next",
+        "new_year",
+        "leap_day",
+        "month_boundary",
+    ],
 )
 def test_available_minutes_counts_working_days_times_shift(d_from, d_to, working_days):
     assert available_minutes(SCHEDULE, d_from, d_to) == working_days * SHIFT
 
 
-@pytest.mark.parametrize("start", [date(2026, 10, 12) + timedelta(days=i) for i in range(7)], ids=lambda d: d.strftime("%a"))
+@pytest.mark.parametrize(
+    "start", [date(2026, 10, 12) + timedelta(days=i) for i in range(7)], ids=lambda d: d.strftime("%a")
+)
 @pytest.mark.parametrize("length", [1, 2, 3, 6, 7, 8, 13, 14, 15, 29, 30, 31, 100, 366])
 def test_available_minutes_matches_day_by_day_count(start, length):
     schedule = Schedule(frozenset({1, 3, 6, 7}), time(8, 30), time(12, 15), 15)
@@ -228,7 +246,9 @@ def test_utc_offset_segments_negative_offset():
 
 
 def test_utc_offset_segments_half_hour_offset():
-    assert _segments(date(2026, 10, 12), date(2026, 10, 13), ZoneInfo("Asia/Kolkata")) == [(utc(2026, 10, 11, 18, 30), 19800)]
+    assert _segments(date(2026, 10, 12), date(2026, 10, 13), ZoneInfo("Asia/Kolkata")) == [
+        (utc(2026, 10, 11, 18, 30), 19800)
+    ]
 
 
 def test_utc_offset_segments_first_segment_starts_at_period_start():
@@ -246,11 +266,35 @@ def test_utc_offset_segments_first_segment_starts_at_period_start():
 @pytest.mark.parametrize(
     ("num", "den", "expected"),
     [
-        (0, 0, 0.0), (5, 0, 0.0), (0, 5, 0.0), (5, 5, 1.0), (1, 2, 0.5), (1, 3, 0.3333), (2, 3, 0.6667),
-        (1, 8, 0.125), (1, 7, 0.1429), (1, 30000, 0.0), (9999, 10000, 0.9999), (3, 2, 1.5), (1, 1, 1.0),
+        (0, 0, 0.0),
+        (5, 0, 0.0),
+        (0, 5, 0.0),
+        (5, 5, 1.0),
+        (1, 2, 0.5),
+        (1, 3, 0.3333),
+        (2, 3, 0.6667),
+        (1, 8, 0.125),
+        (1, 7, 0.1429),
+        (1, 30000, 0.0),
+        (9999, 10000, 0.9999),
+        (3, 2, 1.5),
+        (1, 1, 1.0),
     ],
-    ids=["zero_zero", "num_over_zero", "zero_num", "equal", "half", "third", "two_thirds", "eighth", "seventh",
-         "tiny_rounds_to_zero", "four_digits", "above_one", "one_one"],
+    ids=[
+        "zero_zero",
+        "num_over_zero",
+        "zero_num",
+        "equal",
+        "half",
+        "third",
+        "two_thirds",
+        "eighth",
+        "seventh",
+        "tiny_rounds_to_zero",
+        "four_digits",
+        "above_one",
+        "one_one",
+    ],
 )
 def test_ratio_values(num, den, expected):
     result = _ratio(num, den)
@@ -286,16 +330,23 @@ def test_as_date_datetime_becomes_plain_date(value, expected):
 
 @pytest.mark.parametrize(
     ("text", "expected"),
-    [("2026-10-12", date(2026, 10, 12)), ("2028-02-29", date(2028, 2, 29)), ("2026-12-31", date(2026, 12, 31)),
-     ("0001-01-01", date(1, 1, 1))],
+    [
+        ("2026-10-12", date(2026, 10, 12)),
+        ("2028-02-29", date(2028, 2, 29)),
+        ("2026-12-31", date(2026, 12, 31)),
+        ("0001-01-01", date(1, 1, 1)),
+    ],
     ids=["regular", "leap_day", "year_end", "min_date"],
 )
 def test_as_date_iso_string(text, expected):
     assert _as_date(text) == expected
 
 
-@pytest.mark.parametrize("bad", ["", "not-a-date", "2027-02-29", "2026-13-01", "2026-10-32", None, "12.10.2026"],
-                         ids=["empty", "garbage", "non_leap_feb_29", "month_13", "day_32", "none", "dotted"])
+@pytest.mark.parametrize(
+    "bad",
+    ["", "not-a-date", "2027-02-29", "2026-13-01", "2026-10-32", None, "12.10.2026"],
+    ids=["empty", "garbage", "non_leap_feb_29", "month_13", "day_32", "none", "dotted"],
+)
 def test_as_date_invalid_value_raises_value_error(bad):
     with pytest.raises(ValueError):
         _as_date(bad)

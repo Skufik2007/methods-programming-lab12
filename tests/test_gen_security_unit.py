@@ -73,8 +73,11 @@ def test_verify_password_correct(pw_hash):
     assert verify_password("Password123", pw_hash) is True
 
 
-@pytest.mark.parametrize("wrong", ["password123", "Password123 ", " Password123", "Password124", "", "Password12", "Password1234"],
-                         ids=["case", "trailing_space", "leading_space", "last_char", "empty", "prefix", "extra_char"])
+@pytest.mark.parametrize(
+    "wrong",
+    ["password123", "Password123 ", " Password123", "Password124", "", "Password12", "Password1234"],
+    ids=["case", "trailing_space", "leading_space", "last_char", "empty", "prefix", "extra_char"],
+)
 def test_verify_password_wrong_password_false(pw_hash, wrong):
     assert verify_password(wrong, pw_hash) is False
 
@@ -91,8 +94,11 @@ def test_hash_password_roundtrip_including_limit_and_unicode(password):
         assert verify_password(password + "x", hashed) is False
 
 
-@pytest.mark.parametrize("password", ["a" * 73, "я" * 37, "a" * 71 + "я", "😀" * 19, "a" * 1000],
-                         ids=["73_bytes", "74_bytes_cyrillic", "73_bytes_mixed", "76_bytes_emoji", "1000"])
+@pytest.mark.parametrize(
+    "password",
+    ["a" * 73, "я" * 37, "a" * 71 + "я", "😀" * 19, "a" * 1000],
+    ids=["73_bytes", "74_bytes_cyrillic", "73_bytes_mixed", "76_bytes_emoji", "1000"],
+)
 def test_hash_password_over_72_bytes_raises(password):
     with pytest.raises(ValueError, match="72 bytes"):
         hash_password(password)
@@ -111,7 +117,15 @@ def test_verify_password_over_72_bytes_is_false_not_truncated_match():
 
 @pytest.mark.parametrize(
     "bad_hash",
-    ["", "not-a-hash", "$2b$12$short", "$2b$12$" + "x" * 53, "$1$salt$abcdefghijklmnopqrstuv", "хэш", "$2b$99$" + "a" * 53],
+    [
+        "",
+        "not-a-hash",
+        "$2b$12$short",
+        "$2b$12$" + "x" * 53,
+        "$1$salt$abcdefghijklmnopqrstuv",
+        "хэш",
+        "$2b$99$" + "a" * 53,
+    ],
     ids=["empty", "garbage", "truncated", "invalid_chars_body", "md5_crypt", "non_ascii", "bad_rounds"],
 )
 def test_verify_password_malformed_hash_returns_false(bad_hash):
@@ -189,7 +203,9 @@ def test_token_zero_ttl_is_not_replaced_by_default():
         decode_access_token(create_access_token(1, UserRole.PATIENT, version=0, expires_delta=timedelta(0)))
 
 
-@pytest.mark.parametrize("delta", [timedelta(seconds=-1), timedelta(seconds=-3600), timedelta(days=-365)], ids=["1s", "1h", "1y"])
+@pytest.mark.parametrize(
+    "delta", [timedelta(seconds=-1), timedelta(seconds=-3600), timedelta(days=-365)], ids=["1s", "1h", "1y"]
+)
 def test_expired_token_raises(delta):
     token = create_access_token(1, UserRole.ADMIN, version=0, expires_delta=delta)
     with pytest.raises(TokenError, match="invalid token"):
@@ -269,7 +285,9 @@ def test_token_without_required_claim_rejected(missing):
         decode_access_token(forge(claims(**{missing: ...})))
 
 
-@pytest.mark.parametrize("sub", ["abc", "", "1.5", "5x", " ", "null"], ids=["text", "empty", "float", "suffix", "blank", "null_str"])
+@pytest.mark.parametrize(
+    "sub", ["abc", "", "1.5", "5x", " ", "null"], ids=["text", "empty", "float", "suffix", "blank", "null_str"]
+)
 def test_token_with_non_numeric_sub_rejected(sub):
     with pytest.raises(TokenError):
         decode_access_token(forge(claims(sub=sub)))
@@ -281,20 +299,27 @@ def test_token_with_non_string_sub_rejected(sub):
         decode_access_token(forge(claims(sub=sub)))
 
 
-@pytest.mark.parametrize("role", ["superuser", "ADMIN", "", None, 5, ["admin"]], ids=["unknown", "uppercase", "empty", "none", "int", "list"])
+@pytest.mark.parametrize(
+    "role", ["superuser", "ADMIN", "", None, 5, ["admin"]], ids=["unknown", "uppercase", "empty", "none", "int", "list"]
+)
 def test_token_with_invalid_role_rejected(role):
     with pytest.raises(TokenError):
         decode_access_token(forge(claims(role=role)))
 
 
-@pytest.mark.parametrize("ver", ["1", "0", 1.0, 1.5, True, False, None, [1], {"v": 1}],
-                         ids=["str_1", "str_0", "float_1", "float_1.5", "true", "false", "none", "list", "dict"])
+@pytest.mark.parametrize(
+    "ver",
+    ["1", "0", 1.0, 1.5, True, False, None, [1], {"v": 1}],
+    ids=["str_1", "str_0", "float_1", "float_1.5", "true", "false", "none", "list", "dict"],
+)
 def test_token_with_non_int_ver_rejected(ver):
     with pytest.raises(TokenError):
         decode_access_token(forge(claims(ver=ver)))
 
 
-@pytest.mark.parametrize("exp", ["tomorrow", "9999999999", None, [1], True], ids=["text", "numeric_str", "none", "list", "bool"])
+@pytest.mark.parametrize(
+    "exp", ["tomorrow", "9999999999", None, [1], True], ids=["text", "numeric_str", "none", "list", "bool"]
+)
 def test_token_with_invalid_exp_rejected(exp):
     with pytest.raises(TokenError):
         decode_access_token(forge(claims(exp=exp)))
@@ -313,7 +338,18 @@ def test_token_with_unexpected_audience_rejected():
 @pytest.mark.parametrize(
     "token",
     ["", " ", "abc", "a.b", "a.b.c", "...", "Bearer x.y.z", "eyJhbGciOiJIUzI1NiJ9..", "\x00", "тест.тест.тест"],
-    ids=["empty", "blank", "one_part", "two_parts", "garbage_three_parts", "dots_only", "bearer_prefix", "empty_payload", "nul", "cyrillic"],
+    ids=[
+        "empty",
+        "blank",
+        "one_part",
+        "two_parts",
+        "garbage_three_parts",
+        "dots_only",
+        "bearer_prefix",
+        "empty_payload",
+        "nul",
+        "cyrillic",
+    ],
 )
 def test_garbage_token_rejected(token):
     with pytest.raises(TokenError):
@@ -349,8 +385,12 @@ def test_require_roles_without_roles_raises():
 
 @pytest.mark.parametrize(
     ("allowed", "actual"),
-    [((UserRole.ADMIN,), UserRole.ADMIN), ((UserRole.ADMIN, UserRole.REGISTRAR), UserRole.REGISTRAR),
-     ((UserRole.DOCTOR, UserRole.PATIENT), UserRole.PATIENT), (tuple(UserRole), UserRole.DOCTOR)],
+    [
+        ((UserRole.ADMIN,), UserRole.ADMIN),
+        ((UserRole.ADMIN, UserRole.REGISTRAR), UserRole.REGISTRAR),
+        ((UserRole.DOCTOR, UserRole.PATIENT), UserRole.PATIENT),
+        (tuple(UserRole), UserRole.DOCTOR),
+    ],
     ids=["single", "second_of_two", "patient", "all_roles"],
 )
 async def test_require_roles_allows_listed_role(allowed, actual):
@@ -360,8 +400,12 @@ async def test_require_roles_allows_listed_role(allowed, actual):
 
 @pytest.mark.parametrize(
     ("allowed", "actual"),
-    [((UserRole.DOCTOR,), UserRole.ADMIN), ((UserRole.ADMIN,), UserRole.REGISTRAR), ((UserRole.ADMIN, UserRole.REGISTRAR), UserRole.PATIENT),
-     ((UserRole.PATIENT,), UserRole.DOCTOR)],
+    [
+        ((UserRole.DOCTOR,), UserRole.ADMIN),
+        ((UserRole.ADMIN,), UserRole.REGISTRAR),
+        ((UserRole.ADMIN, UserRole.REGISTRAR), UserRole.PATIENT),
+        ((UserRole.PATIENT,), UserRole.DOCTOR),
+    ],
     ids=["admin_not_implicitly_allowed", "registrar_vs_admin", "patient_vs_staff", "doctor_vs_patient"],
 )
 async def test_require_roles_rejects_other_role_with_403(allowed, actual):

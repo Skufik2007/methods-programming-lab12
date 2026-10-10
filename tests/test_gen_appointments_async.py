@@ -118,7 +118,9 @@ def actor(w, name):
 @pytest.mark.parametrize("role", ["admin", "registrar"])
 async def test_create_staff_books_any_patient_returns_201_and_row(client, auth, w, role):
     user = actor(w, role)
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10), reason="Боль"), headers=auth(user))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10), reason="Боль"), headers=auth(user)
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["status"] == "scheduled"
@@ -132,14 +134,18 @@ async def test_create_staff_books_any_patient_returns_201_and_row(client, auth, 
 
 
 async def test_create_patient_for_own_profile_returns_201(client, auth, w):
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.patient_user))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.patient_user)
+    )
     assert r.status_code == 201
     assert r.json()["created_by"] == w.patient_user.id
     assert len(await db_rows()) == 1
 
 
 async def test_create_patient_for_other_profile_returns_403(client, auth, w):
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10)), headers=auth(w.patient_user))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10)), headers=auth(w.patient_user)
+    )
     assert r.status_code == 403
     assert r.json() == {"detail": "Patients can only book appointments for their own profile"}
     assert await db_rows() == []
@@ -154,7 +160,9 @@ async def test_create_patient_user_without_profile_returns_403(client, auth, mak
 
 
 async def test_create_doctor_role_returns_403(client, auth, w):
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.doctor_user))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.doctor_user)
+    )
     assert r.status_code == 403
     assert r.json() == {"detail": "Insufficient permissions"}
     assert await db_rows() == []
@@ -209,7 +217,9 @@ WINDOW_CASES = [
 
 @pytest.mark.parametrize(("day", "hour", "minute", "minutes", "code", "fragment"), WINDOW_CASES)
 async def test_create_window_rules(client, auth, w, day, hour, minute, minutes, code, fragment):
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(day, hour, minute), minutes), headers=auth(w.admin))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(day, hour, minute), minutes), headers=auth(w.admin)
+    )
     assert r.status_code == code, r.text
     if fragment is None:
         assert len(await db_rows()) == 1
@@ -248,7 +258,9 @@ async def test_create_after_clock_moved_forward_uses_new_now(client, auth, w):
     set_now(msk(13, 10))
     r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.admin))
     assert r.status_code == 422 and "future" in r.json()["detail"]
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin)
+    )
     assert r.status_code == 201
 
 
@@ -283,7 +295,11 @@ async def test_create_invalid_body_returns_422_list(client, auth, w, patch):
 async def test_create_reason_exactly_500_chars_ok_and_none_ok(client, auth, w):
     r = await client.post("/api/appointments", json=_body(w, reason="я" * 500), headers=auth(w.admin))
     assert r.status_code == 201 and len(r.json()["reason"]) == 500
-    r = await client.post("/api/appointments", json=_body(w, starts_at=msk(13, 11).isoformat(), ends_at=msk(13, 11, 30).isoformat(), reason=None), headers=auth(w.admin))
+    r = await client.post(
+        "/api/appointments",
+        json=_body(w, starts_at=msk(13, 11).isoformat(), ends_at=msk(13, 11, 30).isoformat(), reason=None),
+        headers=auth(w.admin),
+    )
     assert r.status_code == 201 and r.json()["reason"] is None
 
 
@@ -338,7 +354,9 @@ async def test_create_over_non_cancelled_appointment_conflicts(client, auth, ses
 
 async def test_create_patient_overlap_with_other_doctor_returns_409(client, auth, session, w):
     await add_appt(session, w.other_doctor, w.patient, msk(13, 10), minutes=60, creator=w.admin)
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin)
+    )
     assert r.status_code == 409
     assert r.json() == {"detail": "The patient already has an appointment at this time"}
     assert len(await db_rows()) == 1
@@ -346,7 +364,9 @@ async def test_create_patient_overlap_with_other_doctor_returns_409(client, auth
 
 async def test_create_patient_adjacent_appointment_with_other_doctor_ok(client, auth, session, w):
     await add_appt(session, w.other_doctor, w.patient, msk(13, 10), creator=w.admin)
-    r = await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin))
+    r = await client.post(
+        "/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10, 30)), headers=auth(w.admin)
+    )
     assert r.status_code == 201
 
 
@@ -366,7 +386,10 @@ async def test_concurrent_same_slot_different_patients_only_one_wins(client, aut
     for _ in range(3):
         patients.append(await add_patient(session))
     results = await asyncio.gather(
-        *(client.post("/api/appointments", json=booking(w.doctor, p, msk(13, 10)), headers=auth(w.admin)) for p in patients)
+        *(
+            client.post("/api/appointments", json=booking(w.doctor, p, msk(13, 10)), headers=auth(w.admin))
+            for p in patients
+        )
     )
     codes = sorted(r.status_code for r in results)
     assert codes == [201, 409, 409, 409, 409]
@@ -382,7 +405,9 @@ async def test_concurrent_same_slot_different_patients_only_one_wins(client, aut
 
 async def test_concurrent_overlapping_intervals_only_one_wins(client, auth, w):
     a = client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10), 60), headers=auth(w.admin))
-    b = client.post("/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10, 30), 60), headers=auth(w.admin))
+    b = client.post(
+        "/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10, 30), 60), headers=auth(w.admin)
+    )
     ra, rb = await asyncio.gather(a, b)
     assert sorted([ra.status_code, rb.status_code]) == [201, 409]
     assert len(await db_rows()) == 1
@@ -390,7 +415,9 @@ async def test_concurrent_overlapping_intervals_only_one_wins(client, auth, w):
 
 async def test_concurrent_adjacent_intervals_both_succeed(client, auth, w):
     a = client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=auth(w.admin))
-    b = client.post("/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10, 30)), headers=auth(w.admin))
+    b = client.post(
+        "/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10, 30)), headers=auth(w.admin)
+    )
     ra, rb = await asyncio.gather(a, b)
     assert (ra.status_code, rb.status_code) == (201, 201)
     assert len(await db_rows()) == 2
@@ -462,7 +489,9 @@ async def test_concurrent_cancel_and_reschedule_one_consistent_final_state(clien
     appt = await add_appt(session, w.doctor, w.patient, msk(13, 10), creator=w.admin)
     rc, rp = await asyncio.gather(
         client.post(f"/api/appointments/{appt.id}/cancel", headers=auth(w.admin)),
-        client.patch(f"/api/appointments/{appt.id}", json={"starts_at": msk(14, 10).isoformat()}, headers=auth(w.admin)),
+        client.patch(
+            f"/api/appointments/{appt.id}", json={"starts_at": msk(14, 10).isoformat()}, headers=auth(w.admin)
+        ),
     )
     final = await db_appt(appt.id)
     assert rc.status_code == 200 and final.status == CANCELLED
@@ -506,7 +535,9 @@ async def test_create_foreign_key_integrity_error_is_not_409(client, auth, w, mo
 
 
 async def test_create_service_reraises_non_unique_integrity_error(session, w, monkeypatch):
-    data = AppointmentCreate(doctor_id=w.doctor.id, patient_id=w.patient.id, starts_at=msk(13, 10), ends_at=msk(13, 10, 30))
+    data = AppointmentCreate(
+        doctor_id=w.doctor.id, patient_id=w.patient.id, starts_at=msk(13, 10), ends_at=msk(13, 10, 30)
+    )
     _patch_commit(monkeypatch, "CHECK constraint failed: ends_after_starts")
     with pytest.raises(IntegrityError):
         await svc.create_appointment(session, w.admin, data, now=FROZEN)
@@ -515,7 +546,9 @@ async def test_create_service_reraises_non_unique_integrity_error(session, w, mo
 
 
 async def test_create_service_converts_unique_integrity_error_to_conflict(session, w, monkeypatch):
-    data = AppointmentCreate(doctor_id=w.doctor.id, patient_id=w.patient.id, starts_at=msk(13, 10), ends_at=msk(13, 10, 30))
+    data = AppointmentCreate(
+        doctor_id=w.doctor.id, patient_id=w.patient.id, starts_at=msk(13, 10), ends_at=msk(13, 10, 30)
+    )
     _patch_commit(monkeypatch, "UNIQUE constraint failed: x")
     with pytest.raises(svc.ConflictError) as exc:
         await svc.create_appointment(session, w.admin, data, now=FROZEN)
@@ -525,7 +558,11 @@ async def test_create_service_converts_unique_integrity_error_to_conflict(sessio
 async def test_reschedule_failed_commit_keeps_old_interval(client, auth, session, w, monkeypatch):
     appt = await add_appt(session, w.doctor, w.patient, msk(13, 10), creator=w.admin)
     _patch_commit(monkeypatch, "FOREIGN KEY constraint failed")
-    r = await client.patch(f"/api/appointments/{appt.id}", json={"starts_at": msk(14, 10).isoformat(), "reason": "новая"}, headers=auth(w.admin))
+    r = await client.patch(
+        f"/api/appointments/{appt.id}",
+        json={"starts_at": msk(14, 10).isoformat(), "reason": "новая"},
+        headers=auth(w.admin),
+    )
     assert r.status_code == 500
     monkeypatch.undo()
     row = await db_appt(appt.id)
@@ -559,7 +596,9 @@ async def test_partial_unique_index_race_on_create_returns_409(client, auth, w, 
 
     monkeypatch.setattr(svc, "_has_overlap", blind)
     h = auth(w.admin)
-    assert (await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=h)).status_code == 201
+    assert (
+        await client.post("/api/appointments", json=booking(w.doctor, w.patient, msk(13, 10)), headers=h)
+    ).status_code == 201
     r = await client.post("/api/appointments", json=booking(w.doctor, w.other_patient, msk(13, 10)), headers=h)
     assert r.status_code == 409
     assert r.json() == {"detail": "This time slot has just been taken; please choose another one"}
@@ -573,7 +612,9 @@ async def test_partial_unique_index_race_on_reschedule_returns_409_and_keeps_row
     await add_appt(session, w.doctor, w.patient, msk(13, 10), creator=w.admin)
     b = await add_appt(session, w.doctor, w.other_patient, msk(13, 11), creator=w.admin)
     monkeypatch.setattr(svc, "_has_overlap", blind)
-    r = await client.patch(f"/api/appointments/{b.id}", json={"starts_at": msk(13, 10).isoformat()}, headers=auth(w.admin))
+    r = await client.patch(
+        f"/api/appointments/{b.id}", json={"starts_at": msk(13, 10).isoformat()}, headers=auth(w.admin)
+    )
     assert r.status_code == 409
     assert r.json() == {"detail": "This time slot has just been taken; please choose another one"}
     assert (await db_appt(b.id)).starts_at == msk(13, 11)
@@ -680,7 +721,9 @@ async def test_list_date_filters_use_clinic_local_days_inclusive(client, auth, s
 
 
 async def test_list_date_from_after_date_to_returns_422(client, auth, w):
-    r = await client.get("/api/appointments", params={"date_from": "2026-10-14", "date_to": "2026-10-13"}, headers=auth(w.admin))
+    r = await client.get(
+        "/api/appointments", params={"date_from": "2026-10-14", "date_to": "2026-10-13"}, headers=auth(w.admin)
+    )
     assert r.status_code == 422
     assert r.json() == {"detail": "date_from must not be later than date_to"}
 
@@ -722,7 +765,9 @@ async def test_list_pagination_and_stable_order(client, auth, session, w):
 
 async def test_list_default_limit_is_20(client, auth, session, w):
     for i in range(21):
-        await add_appt(session, w.doctor, await add_patient(session), msk(13, 9) + timedelta(minutes=i), minutes=1, creator=w.admin)
+        await add_appt(
+            session, w.doctor, await add_patient(session), msk(13, 9) + timedelta(minutes=i), minutes=1, creator=w.admin
+        )
     assert len(await _ids(client, auth(w.admin))) == 20
     assert len(await _ids(client, auth(w.admin), offset=20)) == 1
 
@@ -909,7 +954,13 @@ async def test_patch_invalid_body_returns_422(client, auth, session, w, body):
 
 async def test_patch_role_matrix(client, auth, session, w):
     appt = await add_appt(session, w.doctor, w.patient, msk(14, 10), creator=w.admin)
-    for role, code in [("admin", 200), ("registrar", 200), ("patient_user", 200), ("doctor_user", 403), ("other_patient_user", 404)]:
+    for role, code in [
+        ("admin", 200),
+        ("registrar", 200),
+        ("patient_user", 200),
+        ("doctor_user", 403),
+        ("other_patient_user", 404),
+    ]:
         r = await _patch(client, auth, actor(w, role), appt.id, {"reason": f"by {role}"})
         assert r.status_code == code, (role, r.text)
         if code == 200:
@@ -943,7 +994,9 @@ async def test_patch_end_not_after_existing_start_returns_422(client, auth, sess
 
 async def test_patch_both_bounds_moves_interval(client, auth, session, w):
     appt = await add_appt(session, w.doctor, w.patient, msk(13, 10), creator=w.admin)
-    r = await _patch(client, auth, w.admin, appt.id, {"starts_at": msk(15, 9).isoformat(), "ends_at": msk(15, 10).isoformat()})
+    r = await _patch(
+        client, auth, w.admin, appt.id, {"starts_at": msk(15, 9).isoformat(), "ends_at": msk(15, 10).isoformat()}
+    )
     assert r.status_code == 200
     assert r.json()["status"] == "scheduled"
     row = await db_appt(appt.id)
@@ -1153,7 +1206,12 @@ async def test_slots_ninety_day_limit_inclusive(client, auth, make_doctor, w):
 async def test_slot_from_list_can_be_booked_and_then_disappears(client, auth, w):
     h = auth(w.admin)
     start, end = (await _slots(client, h, w.doctor.id, "2026-10-13"))[3]
-    body = {"doctor_id": w.doctor.id, "patient_id": w.patient.id, "starts_at": start.isoformat(), "ends_at": end.isoformat()}
+    body = {
+        "doctor_id": w.doctor.id,
+        "patient_id": w.patient.id,
+        "starts_at": start.isoformat(),
+        "ends_at": end.isoformat(),
+    }
     assert (await client.post("/api/appointments", json=body, headers=h)).status_code == 201
     assert (start, end) not in await _slots(client, h, w.doctor.id, "2026-10-13")
     assert len(await _slots(client, h, w.doctor.id, "2026-10-13")) == 17

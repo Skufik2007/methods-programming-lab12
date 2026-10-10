@@ -13,9 +13,9 @@ from app.schemas import (
     AppointmentUpdate,
     Cabinet,
     ClinicTime,
-    Dosage,
     DoctorCreate,
     DoctorUpdate,
+    Dosage,
     Email,
     EntityId,
     FullName,
@@ -90,13 +90,25 @@ _LONG_DOMAIN = ".".join(["x" * 63] * 3 + ["com"])  # 195 символов
         ("\tA.B+tag@Sub.Example.Org\n", "a.b+tag@sub.example.org"),
         ("a_b%c-d@ex-ample.co", "a_b%c-d@ex-ample.co"),
         ("a@b.co", "a@b.co"),
-        ("a" * (254 - len(_LONG_DOMAIN) - 1) + "@" + _LONG_DOMAIN, "a" * (254 - len(_LONG_DOMAIN) - 1) + "@" + _LONG_DOMAIN),
+        (
+            "a" * (254 - len(_LONG_DOMAIN) - 1) + "@" + _LONG_DOMAIN,
+            "a" * (254 - len(_LONG_DOMAIN) - 1) + "@" + _LONG_DOMAIN,
+        ),
         ("a@" + "x" * 63 + ".com", "a@" + "x" * 63 + ".com"),
         ("a@example." + "c" * 63, "a@example." + "c" * 63),
         ("1@2.io", "1@2.io"),
     ],
-    ids=["plain", "strip_and_lower", "whitespace_chars_and_subdomain", "special_local_chars", "min_length_6",
-         "max_length_254", "label_63", "tld_63", "digits"],
+    ids=[
+        "plain",
+        "strip_and_lower",
+        "whitespace_chars_and_subdomain",
+        "special_local_chars",
+        "min_length_6",
+        "max_length_254",
+        "label_63",
+        "tld_63",
+        "digits",
+    ],
 )
 def test_email_valid_is_normalized(raw, expected):
     assert check(Email, raw) == expected
@@ -105,16 +117,61 @@ def test_email_valid_is_normalized(raw, expected):
 @pytest.mark.parametrize(
     "raw",
     [
-        "", "   ", "plainaddress", "a@b", "a@@b.com", "@b.com", "a@.com", "a b@example.com", "a@exa mple.com",
-        ".a@example.com", "a.@example.com", "a..b@example.com", "a@-b.com", "a@b-.com", "a@b.c", "a@b.c0m",
-        "a@example.123", "a@exa_mple.com", "тест@example.com", "a@пример.рф", "a@example.com,b@example.com",
-        "a@" + "x" * 64 + ".com", "a@example." + "c" * 64, "a" * 244 + "@example.com",
-        "a@b.c" "om" + "­", "a@example.com\x00",
+        "",
+        "   ",
+        "plainaddress",
+        "a@b",
+        "a@@b.com",
+        "@b.com",
+        "a@.com",
+        "a b@example.com",
+        "a@exa mple.com",
+        ".a@example.com",
+        "a.@example.com",
+        "a..b@example.com",
+        "a@-b.com",
+        "a@b-.com",
+        "a@b.c",
+        "a@b.c0m",
+        "a@example.123",
+        "a@exa_mple.com",
+        "тест@example.com",
+        "a@пример.рф",
+        "a@example.com,b@example.com",
+        "a@" + "x" * 64 + ".com",
+        "a@example." + "c" * 64,
+        "a" * 244 + "@example.com",
+        "a@b.com" + "­",
+        "a@example.com\x00",
     ],
-    ids=["empty", "blank", "no_at", "no_tld", "double_at", "no_local", "empty_label", "space_local", "space_domain",
-         "leading_dot", "trailing_dot", "double_dot", "label_starts_dash", "label_ends_dash", "tld_1_char",
-         "tld_with_digit", "numeric_tld", "underscore_domain", "cyrillic_local", "cyrillic_domain", "two_addresses",
-         "label_64", "tld_64", "length_255", "soft_hyphen", "nul_byte"],
+    ids=[
+        "empty",
+        "blank",
+        "no_at",
+        "no_tld",
+        "double_at",
+        "no_local",
+        "empty_label",
+        "space_local",
+        "space_domain",
+        "leading_dot",
+        "trailing_dot",
+        "double_dot",
+        "label_starts_dash",
+        "label_ends_dash",
+        "tld_1_char",
+        "tld_with_digit",
+        "numeric_tld",
+        "underscore_domain",
+        "cyrillic_local",
+        "cyrillic_domain",
+        "two_addresses",
+        "label_64",
+        "tld_64",
+        "length_255",
+        "soft_hyphen",
+        "nul_byte",
+    ],
 )
 def test_email_invalid_raises(raw):
     fails(Email, raw)
@@ -147,7 +204,16 @@ def test_email_non_string_raises(bad):
 @pytest.mark.parametrize(
     "raw",
     ["abcdefgh", "Password123", "a" * 72, "я" * 36, "я" * 8, "a" * 71, "😀" * 18, "пароль" + "!" * 30],
-    ids=["8_chars", "typical", "72_bytes_ascii", "72_bytes_cyrillic", "8_cyrillic_chars", "71_ascii", "72_bytes_emoji", "mixed_cyr_ascii"],
+    ids=[
+        "8_chars",
+        "typical",
+        "72_bytes_ascii",
+        "72_bytes_cyrillic",
+        "8_cyrillic_chars",
+        "71_ascii",
+        "72_bytes_emoji",
+        "mixed_cyr_ascii",
+    ],
 )
 def test_password_valid_returns_secret_unchanged(raw):
     secret = check(Password, raw)
@@ -167,7 +233,16 @@ def test_password_valid_returns_secret_unchanged(raw):
         ("😀" * 19, "72 bytes"),
         ("a" * 1000, "72 bytes"),
     ],
-    ids=["empty", "7_chars", "7_cyrillic", "73_bytes_ascii", "74_bytes_cyrillic", "73_bytes_mixed", "76_bytes_emoji", "1000"],
+    ids=[
+        "empty",
+        "7_chars",
+        "7_cyrillic",
+        "73_bytes_ascii",
+        "74_bytes_cyrillic",
+        "73_bytes_mixed",
+        "76_bytes_emoji",
+        "1000",
+    ],
 )
 def test_password_invalid_raises_with_reason_and_does_not_leak_value(raw, message):
     with pytest.raises(ValidationError) as exc:
@@ -182,7 +257,11 @@ def test_password_non_string_raises(bad):
     fails(Password, bad)
 
 
-@pytest.mark.parametrize("raw", ["a", "x" * 72, "x" * 73, "я" * 100, "x" * 1024], ids=["1", "72", "73_bytes_ok_for_login", "cyrillic", "1024"])
+@pytest.mark.parametrize(
+    "raw",
+    ["a", "x" * 72, "x" * 73, "я" * 100, "x" * 1024],
+    ids=["1", "72", "73_bytes_ok_for_login", "cyrillic", "1024"],
+)
 def test_login_password_valid_lengths_ok(raw):
     assert check(LoginPassword, raw).get_secret_value() == raw
 
@@ -208,8 +287,11 @@ def test_login_in_normalizes_email_and_keeps_password_secret():
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [("1234567890123456", "1234567890123456"), ("0000000000000000", "0000000000000000"),
-     ("  1234567890123456\n", "1234567890123456")],
+    [
+        ("1234567890123456", "1234567890123456"),
+        ("0000000000000000", "0000000000000000"),
+        ("  1234567890123456\n", "1234567890123456"),
+    ],
     ids=["regular", "leading_zeros_kept", "stripped"],
 )
 def test_policy_number_valid(raw, expected):
@@ -218,10 +300,32 @@ def test_policy_number_valid(raw, expected):
 
 @pytest.mark.parametrize(
     "raw",
-    ["", "123456789012345", "12345678901234567", "123456789012345a", "1234 5678 9012 3456", "1234-5678-9012-3456",
-     "١٢٣٤٥٦٧٨٩٠١٢٣٤٥٦", "１２３４５６７８９０１２３４５６", "12345678901234.6", "+234567890123456", "1234567890123456\n1"],
-    ids=["empty", "15_digits", "17_digits", "letter", "spaces", "dashes", "arabic_indic_digits", "fullwidth_digits",
-         "dot", "plus", "newline_inside"],
+    [
+        "",
+        "123456789012345",
+        "12345678901234567",
+        "123456789012345a",
+        "1234 5678 9012 3456",
+        "1234-5678-9012-3456",
+        "١٢٣٤٥٦٧٨٩٠١٢٣٤٥٦",
+        "１２３４５６７８９０１２３４５６",
+        "12345678901234.6",
+        "+234567890123456",
+        "1234567890123456\n1",
+    ],
+    ids=[
+        "empty",
+        "15_digits",
+        "17_digits",
+        "letter",
+        "spaces",
+        "dashes",
+        "arabic_indic_digits",
+        "fullwidth_digits",
+        "dot",
+        "plus",
+        "newline_inside",
+    ],
 )
 def test_policy_number_invalid_raises(raw):
     fails(PolicyNumber, raw)
@@ -238,8 +342,13 @@ def test_policy_number_int_input_rejected():
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [("+79991234567", "+79991234567"), ("+1234567", "+1234567"), ("+123456789012345", "+123456789012345"),
-     ("  +79991234567 ", "+79991234567"), ("+9999999", "+9999999")],
+    [
+        ("+79991234567", "+79991234567"),
+        ("+1234567", "+1234567"),
+        ("+123456789012345", "+123456789012345"),
+        ("  +79991234567 ", "+79991234567"),
+        ("+9999999", "+9999999"),
+    ],
     ids=["russian", "min_7_digits", "max_15_digits", "stripped", "nines"],
 )
 def test_phone_valid(raw, expected):
@@ -248,11 +357,42 @@ def test_phone_valid(raw, expected):
 
 @pytest.mark.parametrize(
     "raw",
-    ["", "+", "+123456", "+1234567890123456", "+0123456789", "+00123456789", "79991234567", "89991234567",
-     "+7 999 123 45 67", "+7(999)1234567", "+7-999-123-45-67", "++79991234567", "+7999123456a", "+٧٩٩٩١٢٣٤٥٦٧",
-     "+79991234567 ext", "+7999123456\n7"],
-    ids=["empty", "plus_only", "6_digits", "16_digits", "starts_with_0", "double_zero", "no_plus", "8_prefix",
-         "spaces", "brackets", "dashes", "double_plus", "letter", "arabic_digits", "extension", "newline_inside"],
+    [
+        "",
+        "+",
+        "+123456",
+        "+1234567890123456",
+        "+0123456789",
+        "+00123456789",
+        "79991234567",
+        "89991234567",
+        "+7 999 123 45 67",
+        "+7(999)1234567",
+        "+7-999-123-45-67",
+        "++79991234567",
+        "+7999123456a",
+        "+٧٩٩٩١٢٣٤٥٦٧",
+        "+79991234567 ext",
+        "+7999123456\n7",
+    ],
+    ids=[
+        "empty",
+        "plus_only",
+        "6_digits",
+        "16_digits",
+        "starts_with_0",
+        "double_zero",
+        "no_plus",
+        "8_prefix",
+        "spaces",
+        "brackets",
+        "dashes",
+        "double_plus",
+        "letter",
+        "arabic_digits",
+        "extension",
+        "newline_inside",
+    ],
 )
 def test_phone_invalid_raises(raw):
     fails(PhoneE164, raw)
@@ -265,10 +405,28 @@ def test_phone_invalid_raises(raw):
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [("J06.9", "J06.9"), ("j06.9", "J06.9"), ("I10", "I10"), ("s72.00", "S72.00"), (" a00 ", "A00"),
-     ("Z99.99", "Z99.99"), ("A00", "A00"), ("u07.1", "U07.1"), ("C34.1", "C34.1")],
-    ids=["upper", "lower_is_uppercased", "no_subcode", "two_digit_subcode", "stripped", "max_chars", "min_code",
-         "u_code", "c_code"],
+    [
+        ("J06.9", "J06.9"),
+        ("j06.9", "J06.9"),
+        ("I10", "I10"),
+        ("s72.00", "S72.00"),
+        (" a00 ", "A00"),
+        ("Z99.99", "Z99.99"),
+        ("A00", "A00"),
+        ("u07.1", "U07.1"),
+        ("C34.1", "C34.1"),
+    ],
+    ids=[
+        "upper",
+        "lower_is_uppercased",
+        "no_subcode",
+        "two_digit_subcode",
+        "stripped",
+        "max_chars",
+        "min_code",
+        "u_code",
+        "c_code",
+    ],
 )
 def test_icd10_valid_is_normalized(raw, expected):
     assert check(Icd10Code, raw) == expected
@@ -276,11 +434,46 @@ def test_icd10_valid_is_normalized(raw, expected):
 
 @pytest.mark.parametrize(
     "raw",
-    ["", "J6.9", "J06.", "J06.999", "J06,9", "06.9", "JJ06", "J0", "J06.9.1", "J06 .9", "Ж06.9", "J０６", "J06.٩",
-     "J", "123", "J06.9*", "J06.9†", "J06-9"],
-    ids=["empty", "one_digit", "dot_only", "three_digit_subcode", "comma", "no_letter", "two_letters", "one_digit_code",
-         "two_subcodes", "space", "cyrillic_letter", "fullwidth_digits", "arabic_subcode", "letter_only",
-         "digits_only", "asterisk", "dagger", "dash"],
+    [
+        "",
+        "J6.9",
+        "J06.",
+        "J06.999",
+        "J06,9",
+        "06.9",
+        "JJ06",
+        "J0",
+        "J06.9.1",
+        "J06 .9",
+        "Ж06.9",
+        "J０６",
+        "J06.٩",
+        "J",
+        "123",
+        "J06.9*",
+        "J06.9†",
+        "J06-9",
+    ],
+    ids=[
+        "empty",
+        "one_digit",
+        "dot_only",
+        "three_digit_subcode",
+        "comma",
+        "no_letter",
+        "two_letters",
+        "one_digit_code",
+        "two_subcodes",
+        "space",
+        "cyrillic_letter",
+        "fullwidth_digits",
+        "arabic_subcode",
+        "letter_only",
+        "digits_only",
+        "asterisk",
+        "dagger",
+        "dash",
+    ],
 )
 def test_icd10_invalid_raises(raw):
     fails(Icd10Code, raw)
@@ -338,7 +531,9 @@ def test_entity_id_valid(value):
     assert check(EntityId, value) == value
 
 
-@pytest.mark.parametrize("value", [0, -1, 2_147_483_648, None, "abc", 1.5], ids=["zero", "negative", "over_int32", "none", "text", "float"])
+@pytest.mark.parametrize(
+    "value", [0, -1, 2_147_483_648, None, "abc", 1.5], ids=["zero", "negative", "over_int32", "none", "text", "float"]
+)
 def test_entity_id_invalid_raises(value):
     fails(EntityId, value)
 
@@ -355,8 +550,13 @@ def test_slot_minutes_invalid_raises(value):
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [([1], [1]), ([7, 1, 3], [1, 3, 7]), ([5, 4, 3, 2, 1], [1, 2, 3, 4, 5]), ([1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7]),
-     ([7], [7])],
+    [
+        ([1], [1]),
+        ([7, 1, 3], [1, 3, 7]),
+        ([5, 4, 3, 2, 1], [1, 2, 3, 4, 5]),
+        ([1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7]),
+        ([7], [7]),
+    ],
     ids=["single", "unsorted", "reversed", "all_week", "sunday"],
 )
 def test_work_days_valid_is_sorted(raw, expected):
@@ -366,7 +566,18 @@ def test_work_days_valid_is_sorted(raw, expected):
 @pytest.mark.parametrize(
     "raw",
     [[], [0], [8], [-1], [1, 1], [1, 2, 2], [1, 2, 3, 4, 5, 6, 7, 1], None, "12345", [1, "x"]],
-    ids=["empty", "zero", "eight", "negative", "duplicate", "duplicate_later", "eight_items", "none", "string", "non_int"],
+    ids=[
+        "empty",
+        "zero",
+        "eight",
+        "negative",
+        "duplicate",
+        "duplicate_later",
+        "eight_items",
+        "none",
+        "string",
+        "non_int",
+    ],
 )
 def test_work_days_invalid_raises(raw):
     fails(WorkDays, raw)
@@ -397,20 +608,27 @@ def test_utc_datetime_accepts_aware_datetime_object():
     assert check(UTCDatetime, value) == datetime(2026, 10, 12, 9, tzinfo=UTC)
 
 
-@pytest.mark.parametrize("raw", ["2026-10-12T12:00:00", datetime(2026, 10, 12, 12), "2026-10-12", "garbage", "", None],
-                         ids=["naive_str", "naive_obj", "date_only", "garbage", "empty", "none"])
+@pytest.mark.parametrize(
+    "raw",
+    ["2026-10-12T12:00:00", datetime(2026, 10, 12, 12), "2026-10-12", "garbage", "", None],
+    ids=["naive_str", "naive_obj", "date_only", "garbage", "empty", "none"],
+)
 def test_utc_datetime_naive_or_invalid_raises(raw):
     fails(UTCDatetime, raw)
 
 
-@pytest.mark.parametrize("raw", ["0001-01-01T00:00:00+05:00", "9999-12-31T23:59:59-05:00"], ids=["min_edge", "max_edge"])
+@pytest.mark.parametrize(
+    "raw", ["0001-01-01T00:00:00+05:00", "9999-12-31T23:59:59-05:00"], ids=["min_edge", "max_edge"]
+)
 def test_utc_datetime_overflow_edge_gives_validation_error_not_overflow(raw):
     with pytest.raises(ValidationError) as exc:
         TypeAdapter(UTCDatetime).validate_python(raw)
     assert "out of the supported range" in error_of(exc)["msg"]
 
 
-@pytest.mark.parametrize(("raw", "expected"), [("09:00", time(9)), (time(23, 59, 59), time(23, 59, 59)), ("00:00", time(0))])
+@pytest.mark.parametrize(
+    ("raw", "expected"), [("09:00", time(9)), (time(23, 59, 59), time(23, 59, 59)), ("00:00", time(0))]
+)
 def test_clinic_time_naive_ok(raw, expected):
     assert check(ClinicTime, raw) == expected
 
@@ -441,14 +659,34 @@ def make_patient(**override):
 
 @pytest.mark.parametrize(
     "value",
-    [TODAY, TODAY + timedelta(days=1), date(1990, 5, 17), date(2000, 2, 29), date(1896, 1, 1), date(1896, 12, 31), date(2026, 10, 11)],
-    ids=["today", "tomorrow", "regular", "leap_day", "oldest_allowed_first_day", "oldest_allowed_last_day", "yesterday"],
+    [
+        TODAY,
+        TODAY + timedelta(days=1),
+        date(1990, 5, 17),
+        date(2000, 2, 29),
+        date(1896, 1, 1),
+        date(1896, 12, 31),
+        date(2026, 10, 11),
+    ],
+    ids=[
+        "today",
+        "tomorrow",
+        "regular",
+        "leap_day",
+        "oldest_allowed_first_day",
+        "oldest_allowed_last_day",
+        "yesterday",
+    ],
 )
 def test_birth_date_valid(frozen_today, value):
     assert make_patient(birth_date=value).birth_date == value
 
 
-@pytest.mark.parametrize("value", [TODAY + timedelta(days=2), date(2030, 1, 1), date(9999, 12, 31)], ids=["day_after_tomorrow", "future_year", "max"])
+@pytest.mark.parametrize(
+    "value",
+    [TODAY + timedelta(days=2), date(2030, 1, 1), date(9999, 12, 31)],
+    ids=["day_after_tomorrow", "future_year", "max"],
+)
 def test_birth_date_in_future_raises(frozen_today, value):
     with pytest.raises(ValidationError) as exc:
         make_patient(birth_date=value)
@@ -456,7 +694,9 @@ def test_birth_date_in_future_raises(frozen_today, value):
     assert "must not be in the future" in error_of(exc)["msg"]
 
 
-@pytest.mark.parametrize("value", [date(1895, 12, 31), date(1800, 1, 1), date(1, 1, 1)], ids=["one_day_too_old", "1800", "min"])
+@pytest.mark.parametrize(
+    "value", [date(1895, 12, 31), date(1800, 1, 1), date(1, 1, 1)], ids=["one_day_too_old", "1800", "min"]
+)
 def test_birth_date_too_old_raises(frozen_today, value):
     with pytest.raises(ValidationError) as exc:
         make_patient(birth_date=value)
@@ -468,7 +708,11 @@ def test_birth_date_year_boundary_uses_first_of_january(frozen_today):
     assert make_patient(birth_date=date(monkey_today.year - 130, 1, 1)).birth_date == date(1896, 1, 1)
 
 
-@pytest.mark.parametrize("value", ["1990-02-30", "1990-13-01", "garbage", "", None, 123], ids=["feb_30", "month_13", "text", "empty", "none", "int"])
+@pytest.mark.parametrize(
+    "value",
+    ["1990-02-30", "1990-13-01", "garbage", "", None, 123],
+    ids=["feb_30", "month_13", "text", "empty", "none", "int"],
+)
 def test_birth_date_unparsable_raises(frozen_today, value):
     with pytest.raises(ValidationError) as exc:
         make_patient(birth_date=value)
@@ -497,7 +741,9 @@ def test_user_create_accepts_every_role(role):
     assert UserCreate(email="a@b.co", password="Password123", full_name="Ан", role=role).role.value == role
 
 
-@pytest.mark.parametrize("role", ["superuser", "ADMIN", "", None, 1], ids=["unknown", "uppercase", "empty", "none", "int"])
+@pytest.mark.parametrize(
+    "role", ["superuser", "ADMIN", "", None, 1], ids=["unknown", "uppercase", "empty", "none", "int"]
+)
 def test_user_create_invalid_role_raises(role):
     with pytest.raises(ValidationError) as exc:
         UserCreate(email="a@b.co", password="Password123", full_name="Ан", role=role)
@@ -575,9 +821,26 @@ def test_doctor_create_shift_with_offset_raises(field):
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("user_id", 0), ("user_id", 2_147_483_648), ("specialty", "A"), ("cabinet", ""), ("slot_minutes", 4),
-     ("slot_minutes", 241), ("work_days", []), ("work_days", [1, 1])],
-    ids=["user_id_0", "user_id_over", "specialty_short", "cabinet_empty", "slot_4", "slot_241", "days_empty", "days_dup"],
+    [
+        ("user_id", 0),
+        ("user_id", 2_147_483_648),
+        ("specialty", "A"),
+        ("cabinet", ""),
+        ("slot_minutes", 4),
+        ("slot_minutes", 241),
+        ("work_days", []),
+        ("work_days", [1, 1]),
+    ],
+    ids=[
+        "user_id_0",
+        "user_id_over",
+        "specialty_short",
+        "cabinet_empty",
+        "slot_4",
+        "slot_241",
+        "days_empty",
+        "days_dup",
+    ],
 )
 def test_doctor_create_invalid_field_reports_field(field, value):
     with pytest.raises(ValidationError) as exc:
@@ -614,7 +877,12 @@ def test_patient_create_invalid_field_reports_field(frozen_today, field, value):
 
 
 def appointment_data(**override):
-    data = {"doctor_id": 1, "patient_id": 2, "starts_at": "2026-10-13T10:00:00+03:00", "ends_at": "2026-10-13T10:30:00+03:00"}
+    data = {
+        "doctor_id": 1,
+        "patient_id": 2,
+        "starts_at": "2026-10-13T10:00:00+03:00",
+        "ends_at": "2026-10-13T10:30:00+03:00",
+    }
     data.update(override)
     return data
 
@@ -648,7 +916,9 @@ def test_appointment_create_end_one_second_after_start_ok():
 
 def test_appointment_create_same_instant_in_different_offsets_is_rejected():
     with pytest.raises(ValidationError):
-        AppointmentCreate(**appointment_data(starts_at="2026-10-13T10:00:00+03:00", ends_at="2026-10-13T12:00:00+05:00"))
+        AppointmentCreate(
+            **appointment_data(starts_at="2026-10-13T10:00:00+03:00", ends_at="2026-10-13T12:00:00+05:00")
+        )
 
 
 @pytest.mark.parametrize("field", ["starts_at", "ends_at"])
@@ -703,17 +973,33 @@ def test_medical_record_create_invalid_code_reports_field():
 # для nullable_fields null допустим и остаётся в model_fields_set / model_dump(exclude_unset=True).
 
 NON_NULLABLE = [
-    (UserUpdate, "email"), (UserUpdate, "password"), (UserUpdate, "full_name"), (UserUpdate, "role"), (UserUpdate, "is_active"),
-    (DoctorUpdate, "specialty"), (DoctorUpdate, "cabinet"), (DoctorUpdate, "slot_minutes"), (DoctorUpdate, "work_start"),
-    (DoctorUpdate, "work_end"), (DoctorUpdate, "work_days"),
-    (PatientUpdate, "full_name"), (PatientUpdate, "birth_date"), (PatientUpdate, "policy_number"),
-    (AppointmentUpdate, "starts_at"), (AppointmentUpdate, "ends_at"), (AppointmentUpdate, "status"),
-    (PrescriptionUpdate, "medication"), (PrescriptionUpdate, "dosage"),
+    (UserUpdate, "email"),
+    (UserUpdate, "password"),
+    (UserUpdate, "full_name"),
+    (UserUpdate, "role"),
+    (UserUpdate, "is_active"),
+    (DoctorUpdate, "specialty"),
+    (DoctorUpdate, "cabinet"),
+    (DoctorUpdate, "slot_minutes"),
+    (DoctorUpdate, "work_start"),
+    (DoctorUpdate, "work_end"),
+    (DoctorUpdate, "work_days"),
+    (PatientUpdate, "full_name"),
+    (PatientUpdate, "birth_date"),
+    (PatientUpdate, "policy_number"),
+    (AppointmentUpdate, "starts_at"),
+    (AppointmentUpdate, "ends_at"),
+    (AppointmentUpdate, "status"),
+    (PrescriptionUpdate, "medication"),
+    (PrescriptionUpdate, "dosage"),
     (MedicalRecordUpdate, "diagnosis_code"),
 ]
 NULLABLE = [
-    (PatientUpdate, "user_id"), (PatientUpdate, "phone"), (AppointmentUpdate, "reason"),
-    (PrescriptionUpdate, "instructions"), (MedicalRecordUpdate, "notes"),
+    (PatientUpdate, "user_id"),
+    (PatientUpdate, "phone"),
+    (AppointmentUpdate, "reason"),
+    (PrescriptionUpdate, "instructions"),
+    (MedicalRecordUpdate, "notes"),
 ]
 
 
@@ -731,8 +1017,11 @@ def test_update_explicit_null_for_nullable_field_is_kept(model, field):
     assert update.model_dump(exclude_unset=True) == {field: None}
 
 
-@pytest.mark.parametrize("model", [UserUpdate, DoctorUpdate, PatientUpdate, AppointmentUpdate, PrescriptionUpdate, MedicalRecordUpdate],
-                         ids=lambda m: m.__name__)
+@pytest.mark.parametrize(
+    "model",
+    [UserUpdate, DoctorUpdate, PatientUpdate, AppointmentUpdate, PrescriptionUpdate, MedicalRecordUpdate],
+    ids=lambda m: m.__name__,
+)
 def test_update_empty_body_changes_nothing(model):
     update = model()
     assert update.model_fields_set == set()
@@ -834,8 +1123,13 @@ def test_medical_record_update_normalizes_code_and_allows_notes_null():
 
 def test_user_out_has_no_password_hash_and_converts_created_at_to_utc():
     orm_like = SimpleNamespace(
-        id=1, email="a@b.co", full_name="Ан", role=UserRole.ADMIN, is_active=True,
-        created_at=datetime(2026, 10, 12, 12, tzinfo=timezone(timedelta(hours=3))), password_hash="$2b$12$secret",
+        id=1,
+        email="a@b.co",
+        full_name="Ан",
+        role=UserRole.ADMIN,
+        is_active=True,
+        created_at=datetime(2026, 10, 12, 12, tzinfo=timezone(timedelta(hours=3))),
+        password_hash="$2b$12$secret",
     )
     out = UserOut.model_validate(orm_like)
     dumped = out.model_dump()
@@ -846,7 +1140,9 @@ def test_user_out_has_no_password_hash_and_converts_created_at_to_utc():
 
 
 def test_user_out_naive_created_at_raises():
-    orm_like = SimpleNamespace(id=1, email="a@b.co", full_name="Ан", role=UserRole.ADMIN, is_active=True, created_at=datetime(2026, 10, 12))
+    orm_like = SimpleNamespace(
+        id=1, email="a@b.co", full_name="Ан", role=UserRole.ADMIN, is_active=True, created_at=datetime(2026, 10, 12)
+    )
     with pytest.raises(ValidationError):
         UserOut.model_validate(orm_like)
 

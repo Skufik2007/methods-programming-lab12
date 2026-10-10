@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy import func, select
 
 from app import models
+from app.main import app
 from app.models import AppointmentStatus, UserRole
 from app.routers.appointments import get_now
-from app.main import app
 
 _seq = itertools.count(1)
 DAY = timedelta(hours=24)
@@ -220,7 +220,8 @@ class TestAccessMatrix:
         r = await client.patch(f"/api/medical-records/{rec.id}", json={"notes": "чужое"}, headers=auth(other_user))
         assert r.status_code == 403
         assert r.json() == {"detail": "Only the author can modify a medical record"}
-        session.expunge_all(); rec = await session.get(models.MedicalRecord, rec.id)
+        session.expunge_all()
+        rec = await session.get(models.MedicalRecord, rec.id)
         assert rec.notes == "заметка"
 
     async def test_update_by_doctor_who_never_treated_returns_404(self, client, world, auth, session, make_doctor):
@@ -331,9 +332,7 @@ class TestCreate:
     @pytest.mark.parametrize(
         "status", [AppointmentStatus.SCHEDULED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW]
     )
-    async def test_create_linked_to_not_completed_appointment_returns_409(
-        self, client, world, auth, session, status
-    ):
+    async def test_create_linked_to_not_completed_appointment_returns_409(self, client, world, auth, session, status):
         appt = await _make_appointment(session, world.doctor, world.patient, world.registrar, status=status)
         r = await client.post(
             "/api/medical-records", json=_body(world, appointment_id=appt.id), headers=auth(world.doctor_user)
@@ -397,14 +396,20 @@ class TestCreateValidation:
 
     async def test_extra_field_returns_422(self, client, world, auth):
         r = await client.post(
-            "/api/medical-records", json=_body(world, created_at="2020-01-01T00:00:00Z"), headers=auth(world.doctor_user)
+            "/api/medical-records",
+            json=_body(world, created_at="2020-01-01T00:00:00Z"),
+            headers=auth(world.doctor_user),
         )
         assert r.status_code == 422
 
     @pytest.mark.parametrize("field", ["patient_id", "doctor_id", "appointment_id"])
-    @pytest.mark.parametrize("value", [0, -1, 2_147_483_648, "abc", 1.5], ids=["zero", "neg", "overflow", "str", "float"])
+    @pytest.mark.parametrize(
+        "value", [0, -1, 2_147_483_648, "abc", 1.5], ids=["zero", "neg", "overflow", "str", "float"]
+    )
     async def test_bad_id_values_return_422(self, client, world, auth, field, value):
-        r = await client.post("/api/medical-records", json=_body(world, **{field: value}), headers=auth(world.doctor_user))
+        r = await client.post(
+            "/api/medical-records", json=_body(world, **{field: value}), headers=auth(world.doctor_user)
+        )
         assert r.status_code == 422
 
     async def test_max_int_id_is_valid_type_but_unknown_patient_returns_404(self, client, world, auth):
@@ -413,9 +418,7 @@ class TestCreateValidation:
         )
         assert r.status_code == 404
 
-    @pytest.mark.parametrize(
-        "length,expected", [(1, 201), (10_000, 201), (10_001, 422)], ids=["min", "max", "max+1"]
-    )
+    @pytest.mark.parametrize("length,expected", [(1, 201), (10_000, 201), (10_001, 422)], ids=["min", "max", "max+1"])
     async def test_notes_length_boundaries(self, client, world, auth, length, expected):
         r = await client.post(
             "/api/medical-records", json=_body(world, notes="а" * length), headers=auth(world.doctor_user)
@@ -434,7 +437,9 @@ class TestCreateValidation:
 
     async def test_non_json_body_returns_422(self, client, world, auth):
         r = await client.post(
-            "/api/medical-records", content=b"not json", headers={**auth(world.doctor_user), "Content-Type": "application/json"}
+            "/api/medical-records",
+            content=b"not json",
+            headers={**auth(world.doctor_user), "Content-Type": "application/json"},
         )
         assert r.status_code == 422
 
@@ -564,7 +569,9 @@ class TestUpdate:
     )
     async def test_edit_window_boundary(self, client, world, auth, session, now, age, expected):
         rec = await _make_record(session, world.patient, world.doctor, now - age, notes="старая")
-        r = await client.patch(f"/api/medical-records/{rec.id}", json={"notes": "новая"}, headers=auth(world.doctor_user))
+        r = await client.patch(
+            f"/api/medical-records/{rec.id}", json={"notes": "новая"}, headers=auth(world.doctor_user)
+        )
         assert r.status_code == expected
         session.expunge_all()
         stored = (await session.get(models.MedicalRecord, rec.id)).notes

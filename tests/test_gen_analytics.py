@@ -208,7 +208,9 @@ async def dataset(session, make_doctor, reg):
     Вне периода: вс 11.10 23:30 и пн 19.10 00:00 (местное время).
     """
     d1 = await make_doctor()
-    d2 = await make_doctor(work_start=datetime(2000, 1, 1, 10).time(), work_end=datetime(2000, 1, 1, 14).time(), work_days=[1, 2, 3])
+    d2 = await make_doctor(
+        work_start=datetime(2000, 1, 1, 10).time(), work_end=datetime(2000, 1, 1, 14).time(), work_days=[1, 2, 3]
+    )
     p = await _patient(session)
     rows = [
         (d1, msk(12, 9, 0), 30, S.COMPLETED),
@@ -440,8 +442,14 @@ class TestDoctorsLoad:
         for item in r.json():
             assert "full_name" not in item
             assert set(item) == {
-                "doctor_id", "specialty", "is_active", "available_minutes", "busy_minutes",
-                "load_percent", "completed", "no_show",
+                "doctor_id",
+                "specialty",
+                "is_active",
+                "available_minutes",
+                "busy_minutes",
+                "load_percent",
+                "completed",
+                "no_show",
             }
 
 
@@ -555,7 +563,13 @@ class TestTopDiagnoses:
 
     @pytest.mark.parametrize(
         "limit,expected_codes",
-        [(1, ["J06.9"]), (2, ["J06.9", "A09"]), (3, ["J06.9", "A09", "I10"]), (4, ["J06.9", "A09", "I10", "K21"]), (50, ["J06.9", "A09", "I10", "K21"])],
+        [
+            (1, ["J06.9"]),
+            (2, ["J06.9", "A09"]),
+            (3, ["J06.9", "A09", "I10"]),
+            (4, ["J06.9", "A09", "I10", "K21"]),
+            (50, ["J06.9", "A09", "I10", "K21"]),
+        ],
     )
     async def test_top_diagnoses_limit(self, client, hdr, records, limit, expected_codes):
         r = await client.get("/api/analytics/top-diagnoses", params={**WEEK, "limit": limit}, headers=hdr)

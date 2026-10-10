@@ -3,11 +3,11 @@
 from datetime import date, time
 
 import pytest
+from conftest import PASSWORD
 from sqlalchemy import func, select
 
 from app.models import Doctor, Patient, User, UserRole
 from app.security import verify_password
-from conftest import PASSWORD
 
 URL = "/api/users"
 NEW_PASSWORD = "BrandNewPass456"
@@ -173,10 +173,32 @@ async def test_list_users_default_limit_is_20(client, make_user, auth):
 
 @pytest.mark.parametrize(
     "params",
-    [{"limit": 0}, {"limit": 101}, {"limit": -1}, {"limit": "x"}, {"offset": -1}, {"offset": "x"},
-     {"offset": 2_147_483_648}, {"role": "nurse"}, {"is_active": "maybe"}, {"q": ""}, {"q": "я" * 101}],
-    ids=["limit-0", "limit-101", "limit-negative", "limit-text", "offset-negative", "offset-text",
-         "offset-too-big", "unknown-role", "bad-bool", "empty-q", "q-101-chars"],
+    [
+        {"limit": 0},
+        {"limit": 101},
+        {"limit": -1},
+        {"limit": "x"},
+        {"offset": -1},
+        {"offset": "x"},
+        {"offset": 2_147_483_648},
+        {"role": "nurse"},
+        {"is_active": "maybe"},
+        {"q": ""},
+        {"q": "я" * 101},
+    ],
+    ids=[
+        "limit-0",
+        "limit-101",
+        "limit-negative",
+        "limit-text",
+        "offset-negative",
+        "offset-text",
+        "offset-too-big",
+        "unknown-role",
+        "bad-bool",
+        "empty-q",
+        "q-101-chars",
+    ],
 )
 async def test_list_users_invalid_query_returns_422(client, make_user, auth, params):
     admin = await make_user(UserRole.ADMIN)
@@ -186,8 +208,11 @@ async def test_list_users_invalid_query_returns_422(client, make_user, auth, par
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("params", [{"limit": 1}, {"limit": 100}, {"offset": 0}, {"q": "я" * 100}],
-                         ids=["limit-1", "limit-100", "offset-0", "q-100-chars"])
+@pytest.mark.parametrize(
+    "params",
+    [{"limit": 1}, {"limit": 100}, {"offset": 0}, {"q": "я" * 100}],
+    ids=["limit-1", "limit-100", "offset-0", "q-100-chars"],
+)
 async def test_list_users_boundary_query_is_accepted(client, make_user, auth, params):
     admin = await make_user(UserRole.ADMIN)
 
@@ -202,7 +227,9 @@ async def test_list_users_boundary_query_is_accepted(client, make_user, auth, pa
 
 
 @pytest.mark.parametrize("role", list(UserRole), ids=lambda r: r.value)
-async def test_create_user_with_each_role_stores_active_user_with_hashed_password(client, make_user, auth, session, role):
+async def test_create_user_with_each_role_stores_active_user_with_hashed_password(
+    client, make_user, auth, session, role
+):
     admin = await make_user(UserRole.ADMIN)
 
     response = await client.post(URL, json=user_body(role=role.value), headers=auth(admin))
@@ -255,10 +282,30 @@ async def test_create_user_taken_email_returns_409_and_adds_nothing(client, make
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"role": "nurse"}, {"role": None}, {"role": "ADMIN"}, {"is_active": False}, {"token_version": 5},
-     {"password": "short"}, {"password": "a" * 73}, {"email": "bad"}, {"full_name": "x"}, {"full_name": 123}],
-    ids=["unknown-role", "null-role", "uppercase-role", "extra-is_active", "extra-token_version",
-         "short-password", "long-password", "bad-email", "short-name", "numeric-name"],
+    [
+        {"role": "nurse"},
+        {"role": None},
+        {"role": "ADMIN"},
+        {"is_active": False},
+        {"token_version": 5},
+        {"password": "short"},
+        {"password": "a" * 73},
+        {"email": "bad"},
+        {"full_name": "x"},
+        {"full_name": 123},
+    ],
+    ids=[
+        "unknown-role",
+        "null-role",
+        "uppercase-role",
+        "extra-is_active",
+        "extra-token_version",
+        "short-password",
+        "long-password",
+        "bad-email",
+        "short-name",
+        "numeric-name",
+    ],
 )
 async def test_create_user_invalid_body_returns_422(client, make_user, auth, session, overrides):
     admin = await make_user(UserRole.ADMIN)
@@ -281,8 +328,11 @@ async def test_create_user_missing_field_returns_422(client, make_user, auth, fi
     assert response.json()["detail"][0]["loc"] == ["body", field]
 
 
-@pytest.mark.parametrize(("password", "expected"), [("a" * 7, 422), ("a" * 8, 201), ("a" * 72, 201), ("a" * 73, 422)],
-                         ids=["7", "8", "72", "73"])
+@pytest.mark.parametrize(
+    ("password", "expected"),
+    [("a" * 7, 422), ("a" * 8, 201), ("a" * 72, 201), ("a" * 73, 422)],
+    ids=["7", "8", "72", "73"],
+)
 async def test_create_user_password_length_boundaries(client, make_user, auth, password, expected):
     admin = await make_user(UserRole.ADMIN)
 
@@ -309,11 +359,17 @@ async def test_update_user_changes_name_email_and_active_flag(client, make_user,
     assert response.status_code == 200
     body = response.json()
     assert (body["id"], body["full_name"], body["email"], body["is_active"]) == (
-        target.id, "Другое Имя", "other@clinic.test", False,
+        target.id,
+        "Другое Имя",
+        "other@clinic.test",
+        False,
     )
     stored = await reload(session, target.id)
     assert (stored.full_name, stored.email, stored.is_active, stored.role) == (
-        "Другое Имя", "other@clinic.test", False, UserRole.REGISTRAR,
+        "Другое Имя",
+        "other@clinic.test",
+        False,
+        UserRole.REGISTRAR,
     )
 
 
@@ -355,8 +411,16 @@ async def test_update_user_explicit_null_returns_422(client, make_user, auth, bo
 
 @pytest.mark.parametrize(
     "body",
-    [{"token_version": 9}, {"id": 5}, {"password_hash": "x"}, {"role": "nurse"}, {"email": "bad"},
-     {"full_name": "я"}, {"is_active": "perhaps"}, {"password": "short"}],
+    [
+        {"token_version": 9},
+        {"id": 5},
+        {"password_hash": "x"},
+        {"role": "nurse"},
+        {"email": "bad"},
+        {"full_name": "я"},
+        {"is_active": "perhaps"},
+        {"password": "short"},
+    ],
     ids=["token_version", "id", "password_hash", "role", "email", "name", "bool", "password"],
 )
 async def test_update_user_invalid_body_returns_422(client, make_user, auth, body):
@@ -461,7 +525,9 @@ async def test_admin_can_demote_and_deactivate_another_admin(client, make_user, 
     admin = await make_user(UserRole.ADMIN)
     other = await make_user(UserRole.ADMIN)
 
-    response = await client.patch(f"{URL}/{other.id}", json={"role": "registrar", "is_active": False}, headers=auth(admin))
+    response = await client.patch(
+        f"{URL}/{other.id}", json={"role": "registrar", "is_active": False}, headers=auth(admin)
+    )
 
     assert response.status_code == 200
     stored = await reload(session, other.id)
@@ -480,9 +546,7 @@ async def test_role_change_with_doctor_profile_returns_409(client, make_user, au
     response = await client.patch(f"{URL}/{doctor_user.id}", json={"role": new_role}, headers=auth(admin))
 
     assert response.status_code == 409
-    assert response.json() == {
-        "detail": f"The user has a doctor profile; the role cannot be changed to '{new_role}'"
-    }
+    assert response.json() == {"detail": f"The user has a doctor profile; the role cannot be changed to '{new_role}'"}
     assert (await reload(session, doctor_user.id)).role == UserRole.DOCTOR
 
 
@@ -495,9 +559,7 @@ async def test_role_change_with_linked_patient_returns_409(client, make_user, au
     response = await client.patch(f"{URL}/{patient_user.id}", json={"role": new_role}, headers=auth(admin))
 
     assert response.status_code == 409
-    assert response.json() == {
-        "detail": f"The user is linked to a patient; the role cannot be changed to '{new_role}'"
-    }
+    assert response.json() == {"detail": f"The user is linked to a patient; the role cannot be changed to '{new_role}'"}
     assert (await reload(session, patient_user.id)).role == UserRole.PATIENT
 
 
@@ -568,9 +630,7 @@ async def test_password_change_invalidates_old_token_and_old_password(client, ma
     assert old_token.json() == {"detail": "Token is no longer valid"}
     assert old_login.status_code == 401
     assert new_login.status_code == 200
-    new_me = await client.get(
-        "/api/auth/me", headers={"Authorization": f"Bearer {new_login.json()['access_token']}"}
-    )
+    new_me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_login.json()['access_token']}"})
     assert new_me.status_code == 200
     stored = await reload(session, target.id)
     assert stored.token_version == 1

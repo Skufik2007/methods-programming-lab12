@@ -340,8 +340,20 @@ class TestIsUniqueViolation:
             (_Orig(""), False),
         ],
         ids=[
-            "pg-unique", "pg-exclusion", "pgcode-unique", "pgcode-exclusion", "pg-fk", "pg-check", "pg-notnull",
-            "sqlite-2067", "sqlite-1555", "sqlite-fk", "sqlite-check", "text-unique", "text-notnull", "text-check",
+            "pg-unique",
+            "pg-exclusion",
+            "pgcode-unique",
+            "pgcode-exclusion",
+            "pg-fk",
+            "pg-check",
+            "pg-notnull",
+            "sqlite-2067",
+            "sqlite-1555",
+            "sqlite-fk",
+            "sqlite-check",
+            "text-unique",
+            "text-notnull",
+            "text-check",
             "empty",
         ],
     )
@@ -363,9 +375,7 @@ class TestIsUniqueViolation:
 
     async def test_real_duplicate_email_is_unique_violation(self, session, make_user):
         await make_user(UserRole.ADMIN, email="dup@clinic.test")
-        session.add(
-            models.User(email="dup@clinic.test", password_hash="x", full_name="Дубль", role=UserRole.ADMIN)
-        )
+        session.add(models.User(email="dup@clinic.test", password_hash="x", full_name="Дубль", role=UserRole.ADMIN))
         with pytest.raises(IntegrityError) as info:
             await session.commit()
         await session.rollback()

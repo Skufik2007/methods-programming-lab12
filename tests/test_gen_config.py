@@ -44,8 +44,12 @@ def fresh_cache():
 
 @pytest.mark.parametrize(
     "url",
-    ["postgresql+asyncpg://user:pw@localhost:5432/clinic", "sqlite+aiosqlite:///:memory:", "sqlite+aiosqlite:///C:/tmp/x.db",
-     "postgresql+asyncpg://localhost/db"],
+    [
+        "postgresql+asyncpg://user:pw@localhost:5432/clinic",
+        "sqlite+aiosqlite:///:memory:",
+        "sqlite+aiosqlite:///C:/tmp/x.db",
+        "postgresql+asyncpg://localhost/db",
+    ],
     ids=["postgres", "sqlite_memory", "sqlite_file", "postgres_no_credentials"],
 )
 def test_database_url_async_driver_accepted(url):
@@ -54,10 +58,30 @@ def test_database_url_async_driver_accepted(url):
 
 @pytest.mark.parametrize(
     "url",
-    ["postgresql://u:p@h/db", "postgresql+psycopg2://u:p@h/db", "postgresql+psycopg://u:p@h/db", "sqlite://",
-     "sqlite:///x.db", "mysql+aiomysql://u:p@h/db", "not a url", "", "postgresql+asyncpg", "http://example.com"],
-    ids=["plain_postgres", "psycopg2", "psycopg3_sync", "sqlite_sync_memory", "sqlite_sync_file", "mysql", "garbage",
-         "empty", "no_separator", "http"],
+    [
+        "postgresql://u:p@h/db",
+        "postgresql+psycopg2://u:p@h/db",
+        "postgresql+psycopg://u:p@h/db",
+        "sqlite://",
+        "sqlite:///x.db",
+        "mysql+aiomysql://u:p@h/db",
+        "not a url",
+        "",
+        "postgresql+asyncpg",
+        "http://example.com",
+    ],
+    ids=[
+        "plain_postgres",
+        "psycopg2",
+        "psycopg3_sync",
+        "sqlite_sync_memory",
+        "sqlite_sync_file",
+        "mysql",
+        "garbage",
+        "empty",
+        "no_separator",
+        "http",
+    ],
 )
 def test_database_url_invalid_or_sync_driver_raises(url):
     with pytest.raises(ValidationError) as exc:
@@ -92,7 +116,9 @@ def test_allowed_drivers_constant():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("secret", ["s" * 32, "s" * 33, "s" * 200, "ключ" * 8], ids=["32", "33", "200", "cyrillic_32_chars"])
+@pytest.mark.parametrize(
+    "secret", ["s" * 32, "s" * 33, "s" * 200, "ключ" * 8], ids=["32", "33", "200", "cyrillic_32_chars"]
+)
 def test_jwt_secret_long_enough_accepted(secret):
     assert make(jwt_secret=secret).jwt_secret.get_secret_value() == secret
 
@@ -129,7 +155,9 @@ def test_jwt_ttl_in_range_accepted(ttl):
     assert make(jwt_ttl_minutes=ttl).jwt_ttl_minutes == ttl
 
 
-@pytest.mark.parametrize("ttl", [0, -1, 1441, 100_000, "abc", "60.5", None], ids=["0", "-1", "1441", "huge", "text", "float_text", "none"])
+@pytest.mark.parametrize(
+    "ttl", [0, -1, 1441, 100_000, "abc", "60.5", None], ids=["0", "-1", "1441", "huge", "text", "float_text", "none"]
+)
 def test_jwt_ttl_out_of_range_or_invalid_raises(ttl):
     with pytest.raises(ValidationError) as exc:
         make(jwt_ttl_minutes=ttl)
@@ -147,7 +175,9 @@ def test_clinic_timezone_default_is_moscow(clean_env):
     assert settings.clinic_tz == ZoneInfo("Europe/Moscow")
 
 
-@pytest.mark.parametrize("name", ["Europe/Moscow", "UTC", "Asia/Kolkata", "America/New_York", "Europe/Berlin", "Asia/Vladivostok"])
+@pytest.mark.parametrize(
+    "name", ["Europe/Moscow", "UTC", "Asia/Kolkata", "America/New_York", "Europe/Berlin", "Asia/Vladivostok"]
+)
 def test_clinic_timezone_known_zone_accepted(name):
     settings = make(clinic_timezone=name)
     assert settings.clinic_timezone == name
@@ -193,7 +223,9 @@ def test_missing_both_required_fields_reports_both(clean_env):
 
 def test_all_errors_reported_together(clean_env):
     with pytest.raises(ValidationError) as exc:
-        Settings(_env_file=None, database_url="mysql://x", jwt_secret="x", jwt_ttl_minutes=0, clinic_timezone="Nowhere/Land")
+        Settings(
+            _env_file=None, database_url="mysql://x", jwt_secret="x", jwt_ttl_minutes=0, clinic_timezone="Nowhere/Land"
+        )
     assert sorted(fields_of(exc)) == ["clinic_timezone", "database_url", "jwt_secret", "jwt_ttl_minutes"]
 
 

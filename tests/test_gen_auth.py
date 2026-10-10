@@ -1,12 +1,12 @@
 """HTTP-тесты /api/auth: регистрация пациента, вход, текущий пользователь."""
 
 import pytest
+from conftest import PASSWORD
 from sqlalchemy import func, select
 
 from app import models
 from app.models import Patient, User, UserRole
 from app.security import decode_access_token, verify_password
-from conftest import PASSWORD
 
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
@@ -419,9 +419,15 @@ async def test_login_empty_password_returns_422(client, make_user):
 
 @pytest.mark.parametrize(
     "body",
-    [{}, {"email": "a@clinic.test"}, {"password": PASSWORD}, {"email": "bad", "password": PASSWORD},
-     {"email": "a@clinic.test", "password": 12345678}, {"email": None, "password": PASSWORD},
-     {"email": "a@clinic.test", "password": PASSWORD, "remember": True}],
+    [
+        {},
+        {"email": "a@clinic.test"},
+        {"password": PASSWORD},
+        {"email": "bad", "password": PASSWORD},
+        {"email": "a@clinic.test", "password": 12345678},
+        {"email": None, "password": PASSWORD},
+        {"email": "a@clinic.test", "password": PASSWORD, "remember": True},
+    ],
     ids=["empty", "no-password", "no-email", "bad-email", "numeric-password", "null-email", "extra-field"],
 )
 async def test_login_invalid_body_returns_422(client, body):

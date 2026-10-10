@@ -1,9 +1,9 @@
 """Матрица доступа: эндпоинт x роль (без токена, admin, registrar, doctor, patient)."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
-from typing import Callable
 
 import pytest
 
@@ -28,34 +28,84 @@ def _case(method, path, body, expected, label=None):
 CASES = [
     _case("GET", "/api/auth/me", lambda w: None, (401, 200, 200, 200, 200)),
     _case("GET", "/api/users", lambda w: None, (401, 200, 403, 403, 403)),
-    _case("POST", "/api/users", lambda w: {"email": "n@clinic.test", "password": "Password123",
-                                           "full_name": "Новый Человек", "role": "registrar"},
-          (401, 201, 403, 403, 403)),
-    _case("PATCH", lambda w: f"/api/users/{w.spare_user.id}", lambda w: {"full_name": "Другое Имя"},
-          (401, 200, 403, 403, 403), "PATCH /api/users/{existing}"),
+    _case(
+        "POST",
+        "/api/users",
+        lambda w: {
+            "email": "n@clinic.test",
+            "password": "Password123",
+            "full_name": "Новый Человек",
+            "role": "registrar",
+        },
+        (401, 201, 403, 403, 403),
+    ),
+    _case(
+        "PATCH",
+        lambda w: f"/api/users/{w.spare_user.id}",
+        lambda w: {"full_name": "Другое Имя"},
+        (401, 200, 403, 403, 403),
+        "PATCH /api/users/{existing}",
+    ),
     _case("PATCH", "/api/users/999999", lambda w: {"full_name": "Другое Имя"}, (401, 404, 403, 403, 403)),
     _case("GET", "/api/doctors", lambda w: None, (401, 200, 200, 200, 200)),
-    _case("GET", lambda w: f"/api/doctors/{w.doctor.id}", lambda w: None, (401, 200, 200, 200, 200),
-          "GET /api/doctors/{existing}"),
+    _case(
+        "GET",
+        lambda w: f"/api/doctors/{w.doctor.id}",
+        lambda w: None,
+        (401, 200, 200, 200, 200),
+        "GET /api/doctors/{existing}",
+    ),
     _case("GET", "/api/doctors/999999", lambda w: None, (401, 404, 404, 404, 404)),
-    _case("POST", "/api/doctors", lambda w: {"user_id": w.new_doctor_user.id, "specialty": "Лор", "cabinet": "3",
-                                            "work_start": "09:00:00", "work_end": "17:00:00"},
-          (401, 201, 403, 403, 403)),
-    _case("PATCH", lambda w: f"/api/doctors/{w.doctor.id}", lambda w: {"cabinet": "202"},
-          (401, 200, 403, 403, 403), "PATCH /api/doctors/{existing}"),
+    _case(
+        "POST",
+        "/api/doctors",
+        lambda w: {
+            "user_id": w.new_doctor_user.id,
+            "specialty": "Лор",
+            "cabinet": "3",
+            "work_start": "09:00:00",
+            "work_end": "17:00:00",
+        },
+        (401, 201, 403, 403, 403),
+    ),
+    _case(
+        "PATCH",
+        lambda w: f"/api/doctors/{w.doctor.id}",
+        lambda w: {"cabinet": "202"},
+        (401, 200, 403, 403, 403),
+        "PATCH /api/doctors/{existing}",
+    ),
     _case("PATCH", "/api/doctors/999999", lambda w: {"cabinet": "202"}, (401, 404, 403, 403, 403)),
     _case("GET", "/api/patients", lambda w: None, (401, 200, 200, 200, 403)),
     _case("GET", "/api/patients/me", lambda w: None, (401, 403, 403, 403, 200)),
-    _case("GET", lambda w: f"/api/patients/{w.own_patient.id}", lambda w: None, (401, 200, 200, 200, 200),
-          "GET /api/patients/{own-or-visible}"),
-    _case("GET", lambda w: f"/api/patients/{w.foreign_patient.id}", lambda w: None, (401, 200, 200, 404, 404),
-          "GET /api/patients/{foreign}"),
+    _case(
+        "GET",
+        lambda w: f"/api/patients/{w.own_patient.id}",
+        lambda w: None,
+        (401, 200, 200, 200, 200),
+        "GET /api/patients/{own-or-visible}",
+    ),
+    _case(
+        "GET",
+        lambda w: f"/api/patients/{w.foreign_patient.id}",
+        lambda w: None,
+        (401, 200, 200, 404, 404),
+        "GET /api/patients/{foreign}",
+    ),
     _case("GET", "/api/patients/999999", lambda w: None, (401, 404, 404, 404, 404)),
-    _case("POST", "/api/patients", lambda w: {"full_name": "Новый Пациент", "birth_date": "1990-01-01",
-                                             "policy_number": "9000000000000001"},
-          (401, 201, 201, 403, 403)),
-    _case("PATCH", lambda w: f"/api/patients/{w.own_patient.id}", lambda w: {"phone": "+79990000000"},
-          (401, 200, 200, 403, 403), "PATCH /api/patients/{existing}"),
+    _case(
+        "POST",
+        "/api/patients",
+        lambda w: {"full_name": "Новый Пациент", "birth_date": "1990-01-01", "policy_number": "9000000000000001"},
+        (401, 201, 201, 403, 403),
+    ),
+    _case(
+        "PATCH",
+        lambda w: f"/api/patients/{w.own_patient.id}",
+        lambda w: {"phone": "+79990000000"},
+        (401, 200, 200, 403, 403),
+        "PATCH /api/patients/{existing}",
+    ),
     _case("PATCH", "/api/patients/999999", lambda w: {"phone": "+79990000000"}, (401, 404, 404, 403, 403)),
 ]
 
@@ -67,19 +117,29 @@ async def world(session, make_user, make_doctor):
     doctor = await make_doctor()
     doctor_user = await session.get(User, doctor.user_id)
     patient_user = await make_user(UserRole.PATIENT)
-    own = Patient(user_id=patient_user.id, full_name="Свой Пациент", birth_date=date(1990, 1, 1),
-                  policy_number="1000000000000001")
+    own = Patient(
+        user_id=patient_user.id, full_name="Свой Пациент", birth_date=date(1990, 1, 1), policy_number="1000000000000001"
+    )
     foreign = Patient(full_name="Чужой Пациент", birth_date=date(1991, 2, 2), policy_number="1000000000000002")
     session.add_all([own, foreign])
     await session.commit()
     start = datetime(2026, 10, 13, 7, 0, tzinfo=UTC)
-    session.add(Appointment(doctor_id=doctor.id, patient_id=own.id, starts_at=start,
-                            ends_at=start + timedelta(minutes=30), status=AppointmentStatus.SCHEDULED,
-                            created_by=admin.id))
+    session.add(
+        Appointment(
+            doctor_id=doctor.id,
+            patient_id=own.id,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=30),
+            status=AppointmentStatus.SCHEDULED,
+            created_by=admin.id,
+        )
+    )
     await session.commit()
     return SimpleNamespace(
         users={"admin": admin, "registrar": registrar, "doctor": doctor_user, "patient": patient_user},
-        doctor=doctor, own_patient=own, foreign_patient=foreign,
+        doctor=doctor,
+        own_patient=own,
+        foreign_patient=foreign,
         spare_user=await make_user(UserRole.REGISTRAR),
         new_doctor_user=await make_user(UserRole.DOCTOR),
     )

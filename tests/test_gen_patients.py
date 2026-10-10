@@ -23,7 +23,9 @@ def patient_body(**overrides: object) -> dict[str, object]:
     return body
 
 
-async def make_patient(session, *, name: str = "Иванов Иван", policy: str | None = None, user=None, phone=None) -> Patient:
+async def make_patient(
+    session, *, name: str = "Иванов Иван", policy: str | None = None, user=None, phone=None
+) -> Patient:
     number = next(_seq)
     patient = Patient(
         user_id=user.id if user is not None else None,
@@ -40,8 +42,12 @@ async def make_patient(session, *, name: str = "Иванов Иван", policy: 
 async def book(session, doctor, patient, creator, status=AppointmentStatus.SCHEDULED, offset_hours=0) -> Appointment:
     start = BASE_TIME + timedelta(hours=offset_hours + next(_seq))
     appointment = Appointment(
-        doctor_id=doctor.id, patient_id=patient.id, starts_at=start, ends_at=start + timedelta(minutes=30),
-        status=status, created_by=creator.id,
+        doctor_id=doctor.id,
+        patient_id=patient.id,
+        starts_at=start,
+        ends_at=start + timedelta(minutes=30),
+        status=status,
+        created_by=creator.id,
     )
     session.add(appointment)
     await session.commit()
@@ -82,14 +88,23 @@ async def test_list_patients_item_has_all_fields(client, registrar, auth, sessio
 
     response = await client.get(URL, headers=auth(registrar))
 
-    assert response.json() == [{
-        "id": patient.id, "user_id": None, "full_name": "Иванов Иван", "birth_date": "1990-01-01",
-        "phone": "+79990001122", "policy_number": "4000000000000001",
-    }]
+    assert response.json() == [
+        {
+            "id": patient.id,
+            "user_id": None,
+            "full_name": "Иванов Иван",
+            "birth_date": "1990-01-01",
+            "phone": "+79990001122",
+            "policy_number": "4000000000000001",
+        }
+    ]
 
 
-@pytest.mark.parametrize("query", ["петров", "ПЕТРОВ", "ПеТрОв", "ов петр", "  петров "],
-                         ids=["lower", "upper", "mixed", "inner-part", "padded"])
+@pytest.mark.parametrize(
+    "query",
+    ["петров", "ПЕТРОВ", "ПеТрОв", "ов петр", "  петров "],
+    ids=["lower", "upper", "mixed", "inner-part", "padded"],
+)
 async def test_list_patients_search_by_name_ignores_case_for_cyrillic(client, registrar, auth, session, query):
     target = await make_patient(session, name="Сидоров Петров")
     await make_patient(session, name="Иванов Иван")
@@ -147,8 +162,11 @@ async def test_list_patients_invalid_query_returns_422(client, registrar, auth, 
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("params", [{"limit": 1}, {"limit": 100}, {"offset": 0}, {"q": "я" * 100}],
-                         ids=["limit-1", "limit-100", "offset-0", "q-100"])
+@pytest.mark.parametrize(
+    "params",
+    [{"limit": 1}, {"limit": 100}, {"offset": 0}, {"q": "я" * 100}],
+    ids=["limit-1", "limit-100", "offset-0", "q-100"],
+)
 async def test_list_patients_boundary_query_is_accepted(client, registrar, auth, params):
     response = await client.get(URL, params=params, headers=auth(registrar))
 
@@ -185,8 +203,12 @@ async def test_doctor_list_contains_only_own_patients(client, make_doctor, auth,
 
 @pytest.mark.parametrize(
     ("status", "visible"),
-    [(AppointmentStatus.SCHEDULED, True), (AppointmentStatus.COMPLETED, True), (AppointmentStatus.NO_SHOW, True),
-     (AppointmentStatus.CANCELLED, False)],
+    [
+        (AppointmentStatus.SCHEDULED, True),
+        (AppointmentStatus.COMPLETED, True),
+        (AppointmentStatus.NO_SHOW, True),
+        (AppointmentStatus.CANCELLED, False),
+    ],
     ids=lambda v: getattr(v, "value", str(v)),
 )
 async def test_patient_visibility_for_doctor_depends_on_appointment_status(
@@ -207,7 +229,9 @@ async def test_patient_visibility_for_doctor_depends_on_appointment_status(
         assert one.json() == {"detail": "Patient not found"}
 
 
-async def test_patient_with_cancelled_and_active_appointments_is_visible_once(client, make_doctor, make_user, auth, session):
+async def test_patient_with_cancelled_and_active_appointments_is_visible_once(
+    client, make_doctor, make_user, auth, session
+):
     doctor = await make_doctor()
     creator = await make_user(UserRole.ADMIN)
     patient = await make_patient(session)
@@ -323,8 +347,9 @@ async def test_get_patient_nonexistent_id_returns_404_for_staff(client, registra
     assert response.json() == {"detail": "Patient not found"}
 
 
-@pytest.mark.parametrize("patient_id", [0, -1, 2_147_483_648, "abc", "me2"],
-                         ids=["zero", "negative", "over-int32", "text", "me-like"])
+@pytest.mark.parametrize(
+    "patient_id", [0, -1, 2_147_483_648, "abc", "me2"], ids=["zero", "negative", "over-int32", "text", "me-like"]
+)
 async def test_get_patient_invalid_id_returns_422(client, registrar, auth, patient_id):
     response = await client.get(f"{URL}/{patient_id}", headers=auth(registrar))
 
@@ -351,12 +376,20 @@ async def test_create_patient_by_staff_stores_and_returns_data(client, make_user
     assert response.status_code == 201
     body = response.json()
     assert body == {
-        "id": body["id"], "user_id": None, "full_name": "Кузнецова Мария Ивановна",
-        "birth_date": "1985-03-09", "phone": "+79161234567", "policy_number": "2000000000000001",
+        "id": body["id"],
+        "user_id": None,
+        "full_name": "Кузнецова Мария Ивановна",
+        "birth_date": "1985-03-09",
+        "phone": "+79161234567",
+        "policy_number": "2000000000000001",
     }
     stored = await reload(session, body["id"])
     assert (stored.full_name, str(stored.birth_date), stored.phone, stored.policy_number, stored.user_id) == (
-        "Кузнецова Мария Ивановна", "1985-03-09", "+79161234567", "2000000000000001", None,
+        "Кузнецова Мария Ивановна",
+        "1985-03-09",
+        "+79161234567",
+        "2000000000000001",
+        None,
     )
 
 
@@ -410,7 +443,9 @@ async def test_create_patient_with_nonexistent_user_returns_404(client, registra
 
 
 @pytest.mark.parametrize("role", [UserRole.ADMIN, UserRole.REGISTRAR, UserRole.DOCTOR], ids=lambda r: r.value)
-async def test_create_patient_linked_to_user_with_other_role_returns_422(client, registrar, make_user, auth, session, role):
+async def test_create_patient_linked_to_user_with_other_role_returns_422(
+    client, registrar, make_user, auth, session, role
+):
     account = await make_user(role)
 
     response = await client.post(URL, json=patient_body(user_id=account.id), headers=auth(registrar))
@@ -434,19 +469,55 @@ async def test_create_patient_linked_to_user_already_linked_returns_409(client, 
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"full_name": "я"}, {"full_name": "я" * 256}, {"full_name": ""}, {"full_name": None},
-        {"birth_date": "2999-01-01"}, {"birth_date": "1800-01-01"}, {"birth_date": "2026-13-01"},
-        {"birth_date": "09.03.1985"}, {"birth_date": None},
-        {"policy_number": "123456789012345"}, {"policy_number": "12345678901234567"},
-        {"policy_number": "20000000000000a1"}, {"policy_number": None},
-        {"phone": "89161234567"}, {"phone": "+123456"}, {"phone": "+1234567890123456"}, {"phone": ""},
-        {"user_id": 0}, {"user_id": -3}, {"user_id": 2_147_483_648}, {"user_id": "a"},
-        {"id": 1}, {"extra": "x"},
+        {"full_name": "я"},
+        {"full_name": "я" * 256},
+        {"full_name": ""},
+        {"full_name": None},
+        {"birth_date": "2999-01-01"},
+        {"birth_date": "1800-01-01"},
+        {"birth_date": "2026-13-01"},
+        {"birth_date": "09.03.1985"},
+        {"birth_date": None},
+        {"policy_number": "123456789012345"},
+        {"policy_number": "12345678901234567"},
+        {"policy_number": "20000000000000a1"},
+        {"policy_number": None},
+        {"phone": "89161234567"},
+        {"phone": "+123456"},
+        {"phone": "+1234567890123456"},
+        {"phone": ""},
+        {"user_id": 0},
+        {"user_id": -3},
+        {"user_id": 2_147_483_648},
+        {"user_id": "a"},
+        {"id": 1},
+        {"extra": "x"},
     ],
-    ids=["name-1", "name-256", "name-empty", "name-null", "birth-future", "birth-too-old", "birth-bad-month",
-         "birth-wrong-format", "birth-null", "policy-15", "policy-17", "policy-letter", "policy-null",
-         "phone-no-plus", "phone-6-digits", "phone-16-digits", "phone-empty", "user-0", "user-negative",
-         "user-over-int32", "user-text", "extra-id", "extra-field"],
+    ids=[
+        "name-1",
+        "name-256",
+        "name-empty",
+        "name-null",
+        "birth-future",
+        "birth-too-old",
+        "birth-bad-month",
+        "birth-wrong-format",
+        "birth-null",
+        "policy-15",
+        "policy-17",
+        "policy-letter",
+        "policy-null",
+        "phone-no-plus",
+        "phone-6-digits",
+        "phone-16-digits",
+        "phone-empty",
+        "user-0",
+        "user-negative",
+        "user-over-int32",
+        "user-text",
+        "extra-id",
+        "extra-field",
+    ],
 )
 async def test_create_patient_invalid_body_returns_422(client, registrar, auth, session, overrides):
     response = await client.post(URL, json=patient_body(**overrides), headers=auth(registrar))
@@ -468,8 +539,15 @@ async def test_create_patient_missing_required_field_returns_422(client, registr
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"full_name": "Яя"}, {"full_name": "я" * 255}, {"phone": "+1234567"}, {"phone": "+123456789012345"},
-     {"phone": None}, {"user_id": None}, {"birth_date": "1900-01-01"}],
+    [
+        {"full_name": "Яя"},
+        {"full_name": "я" * 255},
+        {"phone": "+1234567"},
+        {"phone": "+123456789012345"},
+        {"phone": None},
+        {"user_id": None},
+        {"birth_date": "1900-01-01"},
+    ],
     ids=["name-2", "name-255", "phone-7-digits", "phone-15-digits", "phone-null", "user-null", "birth-1900"],
 )
 async def test_create_patient_boundary_values_are_accepted(client, registrar, auth, overrides):
@@ -494,12 +572,19 @@ async def test_update_patient_changes_fields_and_keeps_others(client, registrar,
 
     assert response.status_code == 200
     assert response.json() == {
-        "id": patient.id, "user_id": None, "full_name": "Новое Имя", "birth_date": "1970-02-03",
-        "phone": "+79990000000", "policy_number": "7000000000000002",
+        "id": patient.id,
+        "user_id": None,
+        "full_name": "Новое Имя",
+        "birth_date": "1970-02-03",
+        "phone": "+79990000000",
+        "policy_number": "7000000000000002",
     }
     stored = await reload(session, patient.id)
     assert (stored.full_name, str(stored.birth_date), stored.phone, stored.policy_number) == (
-        "Новое Имя", "1970-02-03", "+79990000000", "7000000000000002",
+        "Новое Имя",
+        "1970-02-03",
+        "+79990000000",
+        "7000000000000002",
     )
 
 
@@ -531,10 +616,28 @@ async def test_update_nonexistent_patient_returns_404(client, registrar, auth):
 
 @pytest.mark.parametrize(
     "body",
-    [{"full_name": None}, {"birth_date": None}, {"policy_number": None}, {"full_name": "я"},
-     {"birth_date": "2999-01-01"}, {"policy_number": "123"}, {"phone": "123"}, {"user_id": 0}, {"role": "x"}],
-    ids=["null-name", "null-birth", "null-policy", "short-name", "future-birth", "short-policy", "bad-phone",
-         "user-0", "extra-field"],
+    [
+        {"full_name": None},
+        {"birth_date": None},
+        {"policy_number": None},
+        {"full_name": "я"},
+        {"birth_date": "2999-01-01"},
+        {"policy_number": "123"},
+        {"phone": "123"},
+        {"user_id": 0},
+        {"role": "x"},
+    ],
+    ids=[
+        "null-name",
+        "null-birth",
+        "null-policy",
+        "short-name",
+        "future-birth",
+        "short-policy",
+        "bad-phone",
+        "user-0",
+        "extra-field",
+    ],
 )
 async def test_update_patient_invalid_body_returns_422(client, registrar, auth, session, body):
     patient = await make_patient(session)
@@ -548,7 +651,9 @@ async def test_update_patient_policy_taken_by_other_returns_409_and_keeps_old(cl
     patient = await make_patient(session, policy="7000000000000001")
     await make_patient(session, policy="7000000000000002")
 
-    response = await client.patch(f"{URL}/{patient.id}", json={"policy_number": "7000000000000002"}, headers=auth(registrar))
+    response = await client.patch(
+        f"{URL}/{patient.id}", json={"policy_number": "7000000000000002"}, headers=auth(registrar)
+    )
 
     assert response.status_code == 409
     assert response.json() == {"detail": "A patient with this policy number already exists"}
@@ -559,7 +664,9 @@ async def test_update_patient_with_own_policy_is_not_a_conflict(client, registra
     patient = await make_patient(session, policy="7000000000000001")
 
     response = await client.patch(
-        f"{URL}/{patient.id}", json={"policy_number": "7000000000000001", "full_name": "Тот Же"}, headers=auth(registrar)
+        f"{URL}/{patient.id}",
+        json={"policy_number": "7000000000000001", "full_name": "Тот Же"},
+        headers=auth(registrar),
     )
 
     assert response.status_code == 200
@@ -598,7 +705,9 @@ async def test_unlink_account_with_null_user_id(client, registrar, make_user, au
 async def test_link_nonexistent_user_returns_404_and_changes_nothing(client, registrar, auth, session):
     patient = await make_patient(session)
 
-    response = await client.patch(f"{URL}/{patient.id}", json={"user_id": 9999, "full_name": "Не Должно"}, headers=auth(registrar))
+    response = await client.patch(
+        f"{URL}/{patient.id}", json={"user_id": 9999, "full_name": "Не Должно"}, headers=auth(registrar)
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "User not found"}
@@ -657,10 +766,16 @@ async def test_replace_linked_account_with_another_frees_the_first(client, regis
 
 
 async def test_registered_patient_cannot_be_linked_again_to_second_record(client, registrar, auth, session):
-    register = await client.post("/api/auth/register", json={
-        "email": "self.reg@clinic.test", "password": "Password123", "full_name": "Сам Зарегистрировался",
-        "birth_date": "1991-04-05", "policy_number": "8000000000000001",
-    })
+    register = await client.post(
+        "/api/auth/register",
+        json={
+            "email": "self.reg@clinic.test",
+            "password": "Password123",
+            "full_name": "Сам Зарегистрировался",
+            "birth_date": "1991-04-05",
+            "policy_number": "8000000000000001",
+        },
+    )
     spare = await make_patient(session, policy="8000000000000002")
 
     response = await client.patch(f"{URL}/{spare.id}", json={"user_id": register.json()["id"]}, headers=auth(registrar))

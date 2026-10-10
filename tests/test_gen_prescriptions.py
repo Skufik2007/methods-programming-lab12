@@ -123,9 +123,7 @@ class TestAccessMatrix:
 
     async def test_create_other_doctor_returns_404(self, client, world, auth, session, make_doctor):
         other = await make_doctor()
-        r = await client.post(
-            "/api/prescriptions", json=_body(world), headers=auth(await _user_of(session, other))
-        )
+        r = await client.post("/api/prescriptions", json=_body(world), headers=auth(await _user_of(session, other)))
         assert r.status_code == 404
         assert r.json() == {"detail": "Appointment not found"}
         assert await _count(session) == 0
@@ -184,9 +182,7 @@ class TestAccessMatrix:
         )
         assert r.status_code == 404
 
-    async def test_list_scheduled_appointment_of_treated_patient_returns_empty(
-        self, client, world, auth, session
-    ):
+    async def test_list_scheduled_appointment_of_treated_patient_returns_empty(self, client, world, auth, session):
         scheduled = await _make_appointment(
             session, world.doctor, world.patient, world.registrar, status=AppointmentStatus.SCHEDULED
         )
@@ -276,7 +272,9 @@ class TestCreate:
 
     async def test_two_prescriptions_for_one_appointment_are_allowed(self, client, world, auth, session):
         for med in ("А", "Б"):
-            r = await client.post("/api/prescriptions", json=_body(world, medication=med), headers=auth(world.doctor_user))
+            r = await client.post(
+                "/api/prescriptions", json=_body(world, medication=med), headers=auth(world.doctor_user)
+            )
             assert r.status_code == 201
         assert await _count(session) == 2
 
@@ -318,14 +316,18 @@ class TestCreateValidation:
     @pytest.mark.parametrize("field", ["medication", "dosage", "instructions"])
     @pytest.mark.parametrize("value", ["", "   "], ids=["empty", "blank"])
     async def test_empty_text_returns_422(self, client, world, auth, session, field, value):
-        r = await client.post("/api/prescriptions", json=_body(world, **{field: value}), headers=auth(world.doctor_user))
+        r = await client.post(
+            "/api/prescriptions", json=_body(world, **{field: value}), headers=auth(world.doctor_user)
+        )
         assert r.status_code == 422
         assert await _count(session) == 0
 
     @pytest.mark.parametrize("field", ["medication", "dosage"])
     @pytest.mark.parametrize("value", [None, 5, ["x"]], ids=["null", "int", "list"])
     async def test_required_text_wrong_type_returns_422(self, client, world, auth, field, value):
-        r = await client.post("/api/prescriptions", json=_body(world, **{field: value}), headers=auth(world.doctor_user))
+        r = await client.post(
+            "/api/prescriptions", json=_body(world, **{field: value}), headers=auth(world.doctor_user)
+        )
         assert r.status_code == 422
 
     @pytest.mark.parametrize("missing", ["appointment_id", "medication", "dosage"])
@@ -337,7 +339,9 @@ class TestCreateValidation:
         assert any(missing in e["loc"] for e in r.json()["detail"])
 
     async def test_instructions_null_is_accepted(self, client, world, auth):
-        r = await client.post("/api/prescriptions", json=_body(world, instructions=None), headers=auth(world.doctor_user))
+        r = await client.post(
+            "/api/prescriptions", json=_body(world, instructions=None), headers=auth(world.doctor_user)
+        )
         assert r.status_code == 201
 
     @pytest.mark.parametrize("extra", [{"issued_at": "2020-01-01T00:00:00Z"}, {"id": 5}, {"doctor_id": 1}])
@@ -345,7 +349,9 @@ class TestCreateValidation:
         r = await client.post("/api/prescriptions", json=_body(world, **extra), headers=auth(world.doctor_user))
         assert r.status_code == 422
 
-    @pytest.mark.parametrize("value", [0, -1, 2_147_483_648, "abc", 1.5, None], ids=["zero", "neg", "overflow", "str", "float", "null"])
+    @pytest.mark.parametrize(
+        "value", [0, -1, 2_147_483_648, "abc", 1.5, None], ids=["zero", "neg", "overflow", "str", "float", "null"]
+    )
     async def test_bad_appointment_id_returns_422(self, client, world, auth, value):
         r = await client.post(
             "/api/prescriptions", json=_body(world, appointment_id=value), headers=auth(world.doctor_user)

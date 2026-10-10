@@ -42,8 +42,14 @@ async def test_me_valid_token_returns_200(client, make_user):
 
 @pytest.mark.parametrize(
     "headers",
-    [{}, {"Authorization": ""}, {"Authorization": "Bearer"}, {"Authorization": "Bearer "},
-     {"Authorization": "Basic dXNlcjpwYXNz"}, {"Authorization": "Token abc"}],
+    [
+        {},
+        {"Authorization": ""},
+        {"Authorization": "Bearer"},
+        {"Authorization": "Bearer "},
+        {"Authorization": "Basic dXNlcjpwYXNz"},
+        {"Authorization": "Token abc"},
+    ],
     ids=["no-header", "empty", "bearer-without-token", "bearer-space", "basic-scheme", "token-scheme"],
 )
 async def test_missing_or_non_bearer_credentials_return_not_authenticated(client, headers):

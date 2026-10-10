@@ -96,7 +96,9 @@ def test_scheduling_error_is_value_error():
 # max_days_ahead: 1 (граница 1 сут), 0 (любое будущее -> слишком далеко)
 
 
-@pytest.mark.parametrize("delta", [timedelta(seconds=-1), timedelta(0), timedelta(days=-30)], ids=["minus1s", "now", "far_past"])
+@pytest.mark.parametrize(
+    "delta", [timedelta(seconds=-1), timedelta(0), timedelta(days=-30)], ids=["minus1s", "now", "far_past"]
+)
 def test_booking_window_not_in_future_raises(delta):
     with pytest.raises(SchedulingError, match="Appointment must start in the future"):
         validate_booking_window(NOW + delta, now=NOW)
@@ -111,7 +113,9 @@ def test_booking_window_inside_window_ok(delta):
     validate_booking_window(NOW + delta, now=NOW)
 
 
-@pytest.mark.parametrize("delta", [timedelta(days=90, seconds=1), timedelta(days=91), timedelta(days=365)], ids=["90d_plus1s", "91d", "year"])
+@pytest.mark.parametrize(
+    "delta", [timedelta(days=90, seconds=1), timedelta(days=91), timedelta(days=365)], ids=["90d_plus1s", "91d", "year"]
+)
 def test_booking_window_too_far_raises(delta):
     with pytest.raises(SchedulingError, match="at most 90 days in advance"):
         validate_booking_window(NOW + delta, now=NOW)
@@ -147,7 +151,11 @@ def test_booking_window_year_end_rollover():
 def test_booking_window_naive_datetime_raises(which):
     aware = NOW + timedelta(days=1)
     naive = aware.replace(tzinfo=None)
-    kwargs = {"starts_at": naive, "now": NOW} if which == "starts_at" else {"starts_at": aware, "now": NOW.replace(tzinfo=None)}
+    kwargs = (
+        {"starts_at": naive, "now": NOW}
+        if which == "starts_at"
+        else {"starts_at": aware, "now": NOW.replace(tzinfo=None)}
+    )
     with pytest.raises(ValueError, match="naive datetime"):
         validate_booking_window(kwargs["starts_at"], now=kwargs["now"])
 
@@ -188,7 +196,15 @@ def test_within_shift_inside_ok(start, end):
         (msk(12, 18, 0), msk(12, 18, 30)),
         (msk(12, 6, 0), msk(12, 7, 0)),
     ],
-    ids=["start_1min_early", "start_30min_early", "end_1min_late", "end_30min_late", "wider_than_shift", "after_shift", "before_shift"],
+    ids=[
+        "start_1min_early",
+        "start_30min_early",
+        "end_1min_late",
+        "end_30min_late",
+        "wider_than_shift",
+        "after_shift",
+        "before_shift",
+    ],
 )
 def test_within_shift_outside_shift_raises(start, end):
     with pytest.raises(SchedulingError, match=r"fit into the doctor's shift 09:00-18:00"):
@@ -236,10 +252,14 @@ def test_within_shift_weekday_is_taken_in_local_time_not_utc():
 
 def test_within_shift_shift_is_local_not_utc():
     # 09:00Z = 12:00 МСК: внутри смены по местному времени, хотя в UTC это было бы «в смене» по-другому
-    validate_within_shift(datetime(2026, 10, 12, 9, 0, tzinfo=UTC), datetime(2026, 10, 12, 9, 30, tzinfo=UTC), SCHEDULE, MSK)
+    validate_within_shift(
+        datetime(2026, 10, 12, 9, 0, tzinfo=UTC), datetime(2026, 10, 12, 9, 30, tzinfo=UTC), SCHEDULE, MSK
+    )
     # 06:00Z = 09:00 МСК - начало смены; 05:30Z = 08:30 МСК - до смены
     with pytest.raises(SchedulingError, match="shift"):
-        validate_within_shift(datetime(2026, 10, 12, 5, 30, tzinfo=UTC), datetime(2026, 10, 12, 6, 0, tzinfo=UTC), SCHEDULE, MSK)
+        validate_within_shift(
+            datetime(2026, 10, 12, 5, 30, tzinfo=UTC), datetime(2026, 10, 12, 6, 0, tzinfo=UTC), SCHEDULE, MSK
+        )
 
 
 def test_within_shift_input_in_other_offset_is_converted():
@@ -291,8 +311,17 @@ def test_slot_grid_start_off_grid_raises(hour, minute, second):
 
 @pytest.mark.parametrize(
     "duration",
-    [timedelta(0), timedelta(minutes=-30), timedelta(minutes=29), timedelta(minutes=31), timedelta(minutes=45),
-     timedelta(minutes=150), timedelta(minutes=121), timedelta(minutes=30, seconds=1), timedelta(hours=8)],
+    [
+        timedelta(0),
+        timedelta(minutes=-30),
+        timedelta(minutes=29),
+        timedelta(minutes=31),
+        timedelta(minutes=45),
+        timedelta(minutes=150),
+        timedelta(minutes=121),
+        timedelta(minutes=30, seconds=1),
+        timedelta(hours=8),
+    ],
     ids=["zero", "negative", "29min", "31min", "1.5_slots", "5_slots", "4_slots_plus_1min", "30min_1s", "8h"],
 )
 def test_slot_grid_wrong_duration_raises(duration):
@@ -363,8 +392,18 @@ def _t(h: int, m: int = 0, s: int = 0) -> datetime:
         ((_t(10), _t(11)), (_t(10, 59, 59), _t(12)), True),
         ((_t(10), _t(11)), (_t(10), _t(10, 0, 1)), True),
     ],
-    ids=["equal", "touch_right", "touch_left", "overlap_1s_right", "overlap_1s_left", "contains", "contained",
-         "disjoint", "overlap_last_second", "shares_start"],
+    ids=[
+        "equal",
+        "touch_right",
+        "touch_left",
+        "overlap_1s_right",
+        "overlap_1s_left",
+        "contains",
+        "contained",
+        "disjoint",
+        "overlap_last_second",
+        "shares_start",
+    ],
 )
 def test_intervals_overlap_cases(a, b, expected):
     assert intervals_overlap(*a, *b) is expected
@@ -372,8 +411,12 @@ def test_intervals_overlap_cases(a, b, expected):
 
 @pytest.mark.parametrize(
     ("a", "b"),
-    [((_t(10), _t(10)), (_t(10), _t(11))), ((_t(11), _t(10)), (_t(10), _t(11))),
-     ((_t(10), _t(11)), (_t(10), _t(10))), ((_t(10), _t(11)), (_t(12), _t(11)))],
+    [
+        ((_t(10), _t(10)), (_t(10), _t(11))),
+        ((_t(11), _t(10)), (_t(10), _t(11))),
+        ((_t(10), _t(11)), (_t(10), _t(10))),
+        ((_t(10), _t(11)), (_t(12), _t(11))),
+    ],
     ids=["a_empty", "a_reversed", "b_empty", "b_reversed"],
 )
 def test_intervals_overlap_non_positive_interval_raises(a, b):
@@ -403,13 +446,44 @@ def test_intervals_overlap_compares_instants_across_offsets():
         (date(2026, 12, 31), MSK, datetime(2026, 12, 30, 21, tzinfo=UTC), datetime(2026, 12, 31, 21, tzinfo=UTC)),
         (date(2027, 1, 1), MSK, datetime(2026, 12, 31, 21, tzinfo=UTC), datetime(2027, 1, 1, 21, tzinfo=UTC)),
         (date(2028, 2, 29), MSK, datetime(2028, 2, 28, 21, tzinfo=UTC), datetime(2028, 2, 29, 21, tzinfo=UTC)),
-        (date(2026, 10, 25), ZoneInfo("Europe/Berlin"), datetime(2026, 10, 24, 22, tzinfo=UTC), datetime(2026, 10, 25, 23, tzinfo=UTC)),
-        (date(2026, 3, 29), ZoneInfo("Europe/Berlin"), datetime(2026, 3, 28, 23, tzinfo=UTC), datetime(2026, 3, 29, 22, tzinfo=UTC)),
-        (date(2026, 7, 1), ZoneInfo("America/New_York"), datetime(2026, 7, 1, 4, tzinfo=UTC), datetime(2026, 7, 2, 4, tzinfo=UTC)),
+        (
+            date(2026, 10, 25),
+            ZoneInfo("Europe/Berlin"),
+            datetime(2026, 10, 24, 22, tzinfo=UTC),
+            datetime(2026, 10, 25, 23, tzinfo=UTC),
+        ),
+        (
+            date(2026, 3, 29),
+            ZoneInfo("Europe/Berlin"),
+            datetime(2026, 3, 28, 23, tzinfo=UTC),
+            datetime(2026, 3, 29, 22, tzinfo=UTC),
+        ),
+        (
+            date(2026, 7, 1),
+            ZoneInfo("America/New_York"),
+            datetime(2026, 7, 1, 4, tzinfo=UTC),
+            datetime(2026, 7, 2, 4, tzinfo=UTC),
+        ),
         (date(2026, 10, 12), ZoneInfo("UTC"), datetime(2026, 10, 12, tzinfo=UTC), datetime(2026, 10, 13, tzinfo=UTC)),
-        (date(2026, 10, 12), ZoneInfo("Asia/Kolkata"), datetime(2026, 10, 11, 18, 30, tzinfo=UTC), datetime(2026, 10, 12, 18, 30, tzinfo=UTC)),
+        (
+            date(2026, 10, 12),
+            ZoneInfo("Asia/Kolkata"),
+            datetime(2026, 10, 11, 18, 30, tzinfo=UTC),
+            datetime(2026, 10, 12, 18, 30, tzinfo=UTC),
+        ),
     ],
-    ids=["msk", "month_end", "year_end", "new_year", "leap_day", "berlin_25h", "berlin_23h", "new_york", "utc", "kolkata_half_hour"],
+    ids=[
+        "msk",
+        "month_end",
+        "year_end",
+        "new_year",
+        "leap_day",
+        "berlin_25h",
+        "berlin_23h",
+        "new_york",
+        "utc",
+        "kolkata_half_hour",
+    ],
 )
 def test_local_day_bounds_values(day, tz, start, end):
     assert local_day_bounds(day, tz) == (start, end)
@@ -531,7 +605,14 @@ def test_free_slots_busy_touching_neighbours_do_not_block_them():
         ((msk(12, 8), msk(12, 9, 0, 1)), [msk(12, 9)]),
         ((msk(12, 17, 59, 59), msk(12, 19)), [msk(12, 17, 30)]),
     ],
-    ids=["offgrid_inside", "1s_each_side", "1s_inside_slot", "straddles_two", "starts_before_shift", "ends_after_shift"],
+    ids=[
+        "offgrid_inside",
+        "1s_each_side",
+        "1s_inside_slot",
+        "straddles_two",
+        "starts_before_shift",
+        "ends_after_shift",
+    ],
 )
 def test_free_slots_busy_partial_overlap_blocks_exactly_overlapped_slots(busy, blocked):
     all_starts = set(_starts(free_slots(SCHEDULE, MONDAY, MSK, [], now=msk(12, 8))))

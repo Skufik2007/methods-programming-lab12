@@ -37,7 +37,9 @@ async def make_patient(session, policy: str = "1000000000000001") -> Patient:
     return patient
 
 
-async def book(session, doctor, patient, creator, starts_at, minutes=30, status=AppointmentStatus.SCHEDULED, ends_at=None):
+async def book(
+    session, doctor, patient, creator, starts_at, minutes=30, status=AppointmentStatus.SCHEDULED, ends_at=None
+):
     appointment = Appointment(
         doctor_id=doctor.id,
         patient_id=patient.id,
@@ -104,7 +106,9 @@ async def test_get_doctor_invalid_id_returns_422(client, make_user, auth, doctor
     assert response.status_code == 422
 
 
-async def test_get_doctor_with_deactivated_account_is_still_readable_by_id(client, make_doctor, make_user, auth, session):
+async def test_get_doctor_with_deactivated_account_is_still_readable_by_id(
+    client, make_doctor, make_user, auth, session
+):
     doctor = await make_doctor()
     (await session.get(User, doctor.user_id)).is_active = False
     await session.commit()
@@ -150,8 +154,9 @@ async def test_list_doctors_empty_returns_empty_list(client, make_user, auth):
     assert response.json() == []
 
 
-@pytest.mark.parametrize("query", ["терапевт", "ТЕРАПЕВТ", "Терапевт", "  терапевт  "],
-                         ids=["lower", "upper", "exact", "padded"])
+@pytest.mark.parametrize(
+    "query", ["терапевт", "ТЕРАПЕВТ", "Терапевт", "  терапевт  "], ids=["lower", "upper", "exact", "padded"]
+)
 async def test_list_doctors_specialty_filter_ignores_case_for_cyrillic(client, make_doctor, make_user, auth, query):
     therapist = await make_doctor(specialty="Терапевт")
     await make_doctor(specialty="Хирург")
@@ -267,7 +272,9 @@ async def test_create_doctor_for_user_with_other_role_returns_422(client, admin,
     assert await session.scalar(select(func.count()).select_from(Doctor)) == 0
 
 
-async def test_create_doctor_when_profile_exists_returns_409_and_keeps_old_profile(client, admin, make_doctor, auth, session):
+async def test_create_doctor_when_profile_exists_returns_409_and_keeps_old_profile(
+    client, admin, make_doctor, auth, session
+):
     existing = await make_doctor(specialty="Терапевт")
 
     response = await client.post(URL, json=doctor_body(existing.user_id), headers=auth(admin))
@@ -305,10 +312,31 @@ async def test_create_doctor_when_profile_exists_returns_409_and_keeps_old_profi
         {"user_id": "abc"},
         {"is_active": True},
     ],
-    ids=["start-equals-end", "start-after-end", "start-with-offset", "end-before-start", "bad-time",
-         "slot-4", "slot-241", "slot-0", "slot-text", "days-empty", "day-0", "day-8", "days-duplicate",
-         "days-8-items", "days-not-list", "specialty-1", "specialty-101", "cabinet-empty", "cabinet-21",
-         "user-0", "user-over-int32", "user-text", "extra-field"],
+    ids=[
+        "start-equals-end",
+        "start-after-end",
+        "start-with-offset",
+        "end-before-start",
+        "bad-time",
+        "slot-4",
+        "slot-241",
+        "slot-0",
+        "slot-text",
+        "days-empty",
+        "day-0",
+        "day-8",
+        "days-duplicate",
+        "days-8-items",
+        "days-not-list",
+        "specialty-1",
+        "specialty-101",
+        "cabinet-empty",
+        "cabinet-21",
+        "user-0",
+        "user-over-int32",
+        "user-text",
+        "extra-field",
+    ],
 )
 async def test_create_doctor_invalid_body_returns_422(client, admin, make_user, auth, session, overrides):
     user = await make_user(UserRole.DOCTOR)
@@ -323,11 +351,30 @@ async def test_create_doctor_invalid_body_returns_422(client, admin, make_user, 
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"slot_minutes": 5}, {"slot_minutes": 240}, {"work_days": [1, 2, 3, 4, 5, 6, 7]}, {"work_days": [7]},
-     {"specialty": "Яя"}, {"specialty": "я" * 100}, {"cabinet": "1"}, {"cabinet": "1" * 20},
-     {"work_start": "00:00:00", "work_end": "00:01:00"}, {"work_start": "23:58:00", "work_end": "23:59:00"}],
-    ids=["slot-5", "slot-240", "all-days", "sunday-only", "specialty-2", "specialty-100", "cabinet-1",
-         "cabinet-20", "one-minute-at-midnight", "one-minute-before-midnight"],
+    [
+        {"slot_minutes": 5},
+        {"slot_minutes": 240},
+        {"work_days": [1, 2, 3, 4, 5, 6, 7]},
+        {"work_days": [7]},
+        {"specialty": "Яя"},
+        {"specialty": "я" * 100},
+        {"cabinet": "1"},
+        {"cabinet": "1" * 20},
+        {"work_start": "00:00:00", "work_end": "00:01:00"},
+        {"work_start": "23:58:00", "work_end": "23:59:00"},
+    ],
+    ids=[
+        "slot-5",
+        "slot-240",
+        "all-days",
+        "sunday-only",
+        "specialty-2",
+        "specialty-100",
+        "cabinet-1",
+        "cabinet-20",
+        "one-minute-at-midnight",
+        "one-minute-before-midnight",
+    ],
 )
 async def test_create_doctor_boundary_values_are_accepted(client, admin, make_user, auth, overrides):
     user = await make_user(UserRole.DOCTOR)
@@ -366,7 +413,10 @@ async def test_update_doctor_changes_cabinet_and_specialty_only(client, admin, m
     stored = await reload_doctor(session, doctor.id)
     assert (stored.cabinet, stored.specialty) == ("300", "Кардиолог")
     assert (stored.slot_minutes, stored.work_start, stored.work_end, stored.work_days) == (
-        30, time(9), time(18), [1, 2, 3, 4, 5],
+        30,
+        time(9),
+        time(18),
+        [1, 2, 3, 4, 5],
     )
 
 
@@ -382,7 +432,10 @@ async def test_update_doctor_changes_whole_schedule_without_appointments(client,
     assert response.status_code == 200
     stored = await reload_doctor(session, doctor.id)
     assert (stored.slot_minutes, stored.work_start, stored.work_end, stored.work_days) == (
-        15, time(10), time(14), [2, 6],
+        15,
+        time(10),
+        time(14),
+        [2, 6],
     )
 
 
@@ -414,13 +467,42 @@ async def test_update_nonexistent_doctor_returns_404(client, admin, auth):
 
 @pytest.mark.parametrize(
     "body",
-    [{"user_id": 5}, {"cabinet": None}, {"specialty": None}, {"slot_minutes": None}, {"work_start": None},
-     {"work_end": None}, {"work_days": None}, {"slot_minutes": 4}, {"slot_minutes": 241}, {"work_days": []},
-     {"work_days": [1, 1]}, {"work_days": [9]}, {"work_start": "18:00:00", "work_end": "09:00:00"},
-     {"work_start": "09:00:00", "work_end": "09:00:00"}, {"work_start": "09:00:00+03:00"}, {"cabinet": ""}],
-    ids=["user_id-immutable", "null-cabinet", "null-specialty", "null-slot", "null-start", "null-end",
-         "null-days", "slot-4", "slot-241", "days-empty", "days-duplicate", "day-9", "start-after-end",
-         "start-equals-end", "start-with-offset", "empty-cabinet"],
+    [
+        {"user_id": 5},
+        {"cabinet": None},
+        {"specialty": None},
+        {"slot_minutes": None},
+        {"work_start": None},
+        {"work_end": None},
+        {"work_days": None},
+        {"slot_minutes": 4},
+        {"slot_minutes": 241},
+        {"work_days": []},
+        {"work_days": [1, 1]},
+        {"work_days": [9]},
+        {"work_start": "18:00:00", "work_end": "09:00:00"},
+        {"work_start": "09:00:00", "work_end": "09:00:00"},
+        {"work_start": "09:00:00+03:00"},
+        {"cabinet": ""},
+    ],
+    ids=[
+        "user_id-immutable",
+        "null-cabinet",
+        "null-specialty",
+        "null-slot",
+        "null-start",
+        "null-end",
+        "null-days",
+        "slot-4",
+        "slot-241",
+        "days-empty",
+        "days-duplicate",
+        "day-9",
+        "start-after-end",
+        "start-equals-end",
+        "start-with-offset",
+        "empty-cabinet",
+    ],
 )
 async def test_update_doctor_invalid_body_returns_422(client, admin, make_doctor, auth, body):
     doctor = await make_doctor()
@@ -432,8 +514,12 @@ async def test_update_doctor_invalid_body_returns_422(client, admin, make_doctor
 
 @pytest.mark.parametrize(
     ("body", "message"),
-    [({"work_start": "18:00:00"}, "work_start must be earlier"), ({"work_start": "19:00:00"}, "work_start must be earlier"),
-     ({"work_end": "09:00:00"}, "work_start must be earlier"), ({"work_end": "08:00:00"}, "work_start must be earlier")],
+    [
+        ({"work_start": "18:00:00"}, "work_start must be earlier"),
+        ({"work_start": "19:00:00"}, "work_start must be earlier"),
+        ({"work_end": "09:00:00"}, "work_start must be earlier"),
+        ({"work_end": "08:00:00"}, "work_start must be earlier"),
+    ],
     ids=["start-equals-stored-end", "start-after-stored-end", "end-equals-stored-start", "end-before-stored-start"],
 )
 async def test_update_doctor_single_bound_conflicting_with_stored_one_returns_422(
@@ -449,7 +535,11 @@ async def test_update_doctor_single_bound_conflicting_with_stored_one_returns_42
     assert (stored.work_start, stored.work_end) == (time(9), time(18))
 
 
-@pytest.mark.parametrize("body", [{"work_start": "17:59:00"}, {"work_end": "09:01:00"}], ids=["start-1min-before-end", "end-1min-after-start"])
+@pytest.mark.parametrize(
+    "body",
+    [{"work_start": "17:59:00"}, {"work_end": "09:01:00"}],
+    ids=["start-1min-before-end", "end-1min-after-start"],
+)
 async def test_update_doctor_single_bound_one_minute_inside_is_accepted(client, admin, make_doctor, auth, body):
     doctor = await make_doctor()
 
@@ -475,7 +565,9 @@ async def test_schedule_change_leaving_one_future_appointment_outside_shift_retu
     assert (await reload_doctor(session, doctor.id)).work_end == time(18)
 
 
-async def test_schedule_change_409_reports_exact_number_of_affected_appointments(client, admin, make_doctor, auth, session):
+async def test_schedule_change_409_reports_exact_number_of_affected_appointments(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 14))
@@ -489,7 +581,9 @@ async def test_schedule_change_409_reports_exact_number_of_affected_appointments
     assert "leaves 3 upcoming" in response.json()["detail"]
 
 
-async def test_schedule_change_that_keeps_all_future_appointments_inside_succeeds(client, admin, make_doctor, auth, session):
+async def test_schedule_change_that_keeps_all_future_appointments_inside_succeeds(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 14))
@@ -500,7 +594,9 @@ async def test_schedule_change_that_keeps_all_future_appointments_inside_succeed
     assert (await reload_doctor(session, doctor.id)).work_end == time(14, 30)
 
 
-async def test_schedule_change_shift_end_equal_to_appointment_end_is_boundary_ok(client, admin, make_doctor, auth, session):
+async def test_schedule_change_shift_end_equal_to_appointment_end_is_boundary_ok(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 14))  # 14:00-14:30
@@ -512,7 +608,9 @@ async def test_schedule_change_shift_end_equal_to_appointment_end_is_boundary_ok
     assert bad.status_code == 409
 
 
-async def test_schedule_change_removing_workday_of_future_appointment_returns_409(client, admin, make_doctor, auth, session):
+async def test_schedule_change_removing_workday_of_future_appointment_returns_409(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 10))  # вторник
@@ -556,12 +654,16 @@ async def test_slot_length_change_keeping_grid_succeeds(client, admin, make_doct
     assert (await reload_doctor(session, doctor.id)).slot_minutes == 15
 
 
-async def test_slot_length_change_making_appointment_longer_than_three_slots_returns_409(client, admin, make_doctor, auth, session):
+async def test_slot_length_change_making_appointment_longer_than_three_slots_returns_409(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 10), minutes=30)
 
-    three_slots = await client.patch(f"{URL}/{doctor.id}", json={"slot_minutes": 10}, headers=auth(admin))  # ровно 3 слота
+    three_slots = await client.patch(
+        f"{URL}/{doctor.id}", json={"slot_minutes": 10}, headers=auth(admin)
+    )  # ровно 3 слота
     five_slots = await client.patch(f"{URL}/{doctor.id}", json={"slot_minutes": 5}, headers=auth(admin))  # 6 слотов
 
     assert three_slots.status_code == 200
@@ -579,10 +681,13 @@ async def test_shift_start_moved_after_future_appointment_returns_409(client, ad
 
 
 @pytest.mark.parametrize(
-    "status", [AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW],
+    "status",
+    [AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW],
     ids=lambda s: s.value,
 )
-async def test_non_scheduled_appointments_do_not_block_schedule_change(client, admin, make_doctor, auth, session, status):
+async def test_non_scheduled_appointments_do_not_block_schedule_change(
+    client, admin, make_doctor, auth, session, status
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 14), status=status)
@@ -633,7 +738,9 @@ async def test_other_doctors_appointments_do_not_block_schedule_change(client, a
     assert response.status_code == 200
 
 
-async def test_cabinet_and_specialty_change_ignores_appointments_outside_current_grid(client, admin, make_doctor, auth, session):
+async def test_cabinet_and_specialty_change_ignores_appointments_outside_current_grid(
+    client, admin, make_doctor, auth, session
+):
     doctor = await make_doctor()
     patient = await make_patient(session)
     await book(session, doctor, patient, admin, msk(13, 10, 7))  # вне сетки, график не меняется
