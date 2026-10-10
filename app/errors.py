@@ -8,7 +8,8 @@
 * ``PermissionDeniedError`` - 403 (операция запрещена роли или владельцу);
 * ``BusinessRuleError``     - 422 (нарушено бизнес-правило: прошлое время, вне смены, не по сетке).
 
-Также здесь лежит ``is_unique_violation`` - классификация ``IntegrityError`` (PostgreSQL / SQLite).
+Также здесь лежит ``is_unique_violation`` - классификация ``IntegrityError`` (PostgreSQL / SQLite):
+нарушение уникальности и (только PostgreSQL) нарушение ограничения EXCLUDE.
 """
 
 from typing import ClassVar
@@ -18,6 +19,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 _PG_UNIQUE_VIOLATION = "23505"
+# exclusion_violation: ограничение EXCLUDE из миграции 0001 (пересечение неотменённых записей врача).
+_PG_EXCLUSION_VIOLATION = "23P01"
+_PG_CONFLICT_SQLSTATES: frozenset[str] = frozenset({_PG_UNIQUE_VIOLATION, _PG_EXCLUSION_VIOLATION})
 # SQLITE_CONSTRAINT_PRIMARYKEY, SQLITE_CONSTRAINT_UNIQUE
 _SQLITE_UNIQUE_CODES: frozenset[int] = frozenset({1555, 2067})
 
@@ -57,18 +61,22 @@ class BusinessRuleError(DomainError):
 
 
 def is_unique_violation(exc: IntegrityError) -> bool:
-    """Возвращает ``True``, если ``IntegrityError`` вызван нарушением уникальности.
+    """Возвращает ``True``, если ``IntegrityError`` вызван нарушением уникальности (или EXCLUDE).
 
     Нужна, чтобы превращать в 409 только гонки за уникальный индекс, а не любые ошибки
     целостности (нарушение внешнего ключа или CHECK - это баг, а не конфликт клиента).
 
-    * PostgreSQL (asyncpg): SQLSTATE ``23505`` (атрибут ``sqlstate`` / ``pgcode`` у ``exc.orig``);
+    * PostgreSQL (asyncpg): SQLSTATE ``23505`` (unique_violation) либо ``23P01``
+      (exclusion_violation - ограничение EXCLUDE, запрещающее пересечение записей врача;
+      по смыслу это та же «уникальность», только для диапазонов); значение лежит в атрибуте
+      ``sqlstate`` / ``pgcode`` у ``exc.orig``;
     * SQLite: ``sqlite_errorcode`` 2067 / 1555 (Python 3.11+) либо текст ``UNIQUE constraint failed``.
     """
     for error in (exc.orig, getattr(exc.orig, "__cause__", None)):
         if error is None:
             continue
-        if _PG_UNIQUE_VIOLATION in (getattr(error, "sqlstate", None), getattr(error, "pgcode", None)):
+        sqlstates = (getattr(error, "sqlstate", None), getattr(error, "pgcode", None))
+        if any(code in _PG_CONFLICT_SQLSTATES for code in sqlstates):
             return True
         if getattr(error, "sqlite_errorcode", None) in _SQLITE_UNIQUE_CODES:
             return True
