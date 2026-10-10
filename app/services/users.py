@@ -8,8 +8,8 @@
 блокируется (``FOR UPDATE``), поэтому одновременное создание профиля врача/пациента и смена
 роли выполняются по очереди и не оставляют «врача с ролью patient».
 
-Токены уже выданных сессий после смены роли и деактивации отклоняются самим
-``get_current_user`` (сверка роли и ``is_active`` с БД).
+Токены уже выданных сессий после смены роли, пароля и деактивации отклоняются самим
+``get_current_user`` (сверка роли, ``is_active`` и ``token_version`` с БД).
 """
 
 from dataclasses import dataclass
@@ -134,6 +134,7 @@ async def update_user(session: AsyncSession, actor: User, user_id: int, data: Us
         user.is_active = data.is_active
     if data.password is not None:
         user.password_hash = await hash_password_async(data.password.get_secret_value())
+        user.token_version += 1  # уже выданные токены (в том числе украденные) перестают действовать
 
     await commit_or_conflict(session, "Email is already registered")
     return user

@@ -130,3 +130,19 @@ def test_05_sqlite_unicode_lower_does_not_depend_on_imports():
         [sys.executable, "-c", code], capture_output=True, encoding="utf-8", env=env, check=True, timeout=60
     )
     assert result.stdout.strip() == "иванов"
+
+
+async def test_06_password_change_revokes_issued_tokens(client: httpx.AsyncClient, make_user, auth):
+    admin = await make_user(UserRole.ADMIN)
+    patient = await make_user(UserRole.PATIENT, email="victim@clinic.test")
+    login = await client.post("/api/auth/login", json={"email": "victim@clinic.test", "password": "Password123"})
+    stolen = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert (await client.get("/api/auth/me", headers=stolen)).status_code == 200
+
+    changed = await client.patch(f"/api/users/{patient.id}", json={"password": "NewPassword456"}, headers=auth(admin))
+    assert changed.status_code == 200
+
+    assert (await client.get("/api/auth/me", headers=stolen)).status_code == 401
+    relogin = await client.post("/api/auth/login", json={"email": "victim@clinic.test", "password": "NewPassword456"})
+    fresh = {"Authorization": f"Bearer {relogin.json()['access_token']}"}
+    assert (await client.get("/api/auth/me", headers=fresh)).status_code == 200

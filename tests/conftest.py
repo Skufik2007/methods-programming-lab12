@@ -108,6 +108,6 @@ def auth() -> Callable[[models.User], dict[str, str]]:
     """Заголовок Authorization для пользователя."""
 
     def _auth(user: models.User) -> dict[str, str]:
-        return {"Authorization": f"Bearer {create_access_token(user.id, user.role)}"}
+        return {"Authorization": f"Bearer {create_access_token(user.id, user.role, version=user.token_version)}"}
 
     return _auth

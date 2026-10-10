@@ -23,6 +23,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     SmallInteger,
     String,
@@ -135,6 +136,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(_enum_type(UserRole, "user_role"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    # Увеличивается при смене пароля: токены, выданные раньше, перестают приниматься.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utc_now, server_default=func.now())
 
     doctor_profile: Mapped[Optional["Doctor"]] = relationship(back_populates="user", lazy="raise")

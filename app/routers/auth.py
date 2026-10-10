@@ -122,7 +122,7 @@ async def login(data: LoginIn, session: SessionDep) -> TokenOut:
             headers={"WWW-Authenticate": "Bearer"},
         )
     return TokenOut(
-        access_token=create_access_token(user.id, user.role),
+        access_token=create_access_token(user.id, user.role, version=user.token_version),
         expires_in=get_settings().jwt_ttl_minutes * 60,
     )
 

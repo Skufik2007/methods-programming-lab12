@@ -3,9 +3,10 @@
 * Пароли хэшируются bcrypt напрямую (без passlib). bcrypt учитывает только первые
   72 байта пароля, поэтому более длинные пароли отвергаются, а не обрезаются молча.
 * Токен содержит поля ``sub`` (id пользователя строкой - PyJWT требует строку),
-  ``role`` и ``exp``. Алгоритм при проверке жёстко ограничен HS256.
+  ``role``, ``ver`` (версия токенов пользователя) и ``exp``. Алгоритм при проверке жёстко ограничен HS256.
 * Источник истины о правах - БД: роль из токена сверяется с текущей ролью пользователя,
-  неактивные пользователи и токены с устаревшей ролью получают 401.
+  неактивные пользователи, токены с устаревшей ролью и токены, выданные до смены
+  пароля (``ver`` меньше ``User.token_version``), получают 401.
 """
 
 import asyncio
@@ -41,6 +42,7 @@ class TokenPayload:
 
     user_id: int
     role: UserRole
+    version: int
     expires_at: datetime
 
 
@@ -84,8 +86,12 @@ async def verify_password_async(password: str, password_hash: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
-def create_access_token(user_id: int, role: UserRole, *, expires_delta: timedelta | None = None) -> str:
-    """Создаёт подписанный JWT (HS256) с полями ``sub``, ``role``, ``exp``.
+def create_access_token(
+    user_id: int, role: UserRole, *, version: int, expires_delta: timedelta | None = None
+) -> str:
+    """Создаёт подписанный JWT (HS256) с полями ``sub``, ``role``, ``ver``, ``exp``.
+
+    ``version`` - текущее ``User.token_version``; параметр обязателен, чтобы его нельзя было забыть.
 
     ``expires_delta`` по умолчанию берётся из JWT_TTL_MINUTES; параметр нужен в основном тестам.
     """
@@ -94,9 +100,17 @@ def create_access_token(user_id: int, role: UserRole, *, expires_delta: timedelt
     claims = {
         "sub": str(user_id),
         "role": role.value,
+        "ver": version,
         "exp": utc_now() + ttl,  # PyJWT сам превращает aware datetime в числовую метку времени
     }
     return jwt.encode(claims, settings.jwt_secret.get_secret_value(), algorithm=JWT_ALGORITHM)
+
+
+def _strict_int(value: object) -> int:
+    """Целое из JWT без неявных преобразований (``True`` и ``"1"`` не принимаются)."""
+    if type(value) is not int:
+        raise TypeError("expected an integer claim")
+    return value
 
 
 def decode_access_token(token: str) -> TokenPayload:
@@ -114,11 +128,12 @@ def decode_access_token(token: str) -> TokenPayload:
             token,
             settings.jwt_secret.get_secret_value(),
             algorithms=[JWT_ALGORITHM],
-            options={"require": ["sub", "role", "exp"]},
+            options={"require": ["sub", "role", "ver", "exp"]},
         )
         return TokenPayload(
             user_id=int(claims["sub"]),
             role=UserRole(claims["role"]),
+            version=_strict_int(claims["ver"]),
             expires_at=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
         )
     except (jwt.PyJWTError, KeyError, ValueError, TypeError) as exc:
@@ -158,7 +173,7 @@ async def get_current_user(
     user = await session.get(User, payload.user_id)
     if user is None or not user.is_active:
         raise _unauthorized("Invalid or expired token")
-    if user.role != payload.role:
+    if user.role != payload.role or user.token_version != payload.version:
         raise _unauthorized("Token is no longer valid")
     return user
 
