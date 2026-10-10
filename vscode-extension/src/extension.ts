@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { describeError, isAbortError, streamChat } from './ollama';
@@ -38,13 +39,12 @@ function post(s: PanelState, message: unknown): void {
   }
 }
 
+/**
+ * Nonce для CSP панели. Он защищает, только если его нельзя угадать, поэтому
+ * берётся криптостойкий генератор, а не Math.random().
+ */
 function getNonce(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let out = '';
-  for (let i = 0; i < 32; i++) {
-    out += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return out;
+  return randomBytes(18).toString('base64');
 }
 
 function buildHtml(webview: vscode.Webview, mediaRoot: vscode.Uri): string {
