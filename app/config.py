@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.exc import ArgumentError
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 ALLOWED_DB_DRIVERS: frozenset[str] = frozenset({"postgresql+asyncpg", "sqlite+aiosqlite"})
 JWT_SECRET_MIN_LENGTH = 32  # HS256: ключ не короче 256 бит
@@ -41,9 +41,7 @@ class Settings(BaseSettings):
         except ArgumentError as exc:
             raise ValueError("DATABASE_URL is not a valid SQLAlchemy URL") from exc
         if driver not in ALLOWED_DB_DRIVERS:
-            raise ValueError(
-                "DATABASE_URL must use an async driver: postgresql+asyncpg or sqlite+aiosqlite"
-            )
+            raise ValueError("DATABASE_URL must use an async driver: postgresql+asyncpg or sqlite+aiosqlite")
         return value
 
     @field_validator("jwt_secret")

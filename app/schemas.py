@@ -11,7 +11,7 @@
 * Все datetime - aware и приводятся к UTC.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, ClassVar, Literal, Self
 
 from pydantic import (
@@ -49,7 +49,7 @@ def _to_utc(value: datetime) -> datetime:
     # OverflowError не является ValueError, Pydantic его не перехватывает, и клиент
     # получил бы 500 вместо 422.
     try:
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
     except OverflowError:
         raise ValueError("datetime is out of the supported range") from None
 
@@ -78,7 +78,7 @@ def _check_login_password(value: SecretStr) -> SecretStr:
 
 def _check_birth_date(value: date) -> date:
     # +1 день: допуск на часовые пояса клиники, опережающие UTC.
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     if value > today + timedelta(days=1):
         raise ValueError("birth_date must not be in the future")
     if value.year < today.year - MAX_AGE_YEARS:
@@ -425,5 +425,5 @@ class LoginIn(_InputSchema):
 
 class TokenOut(_OutputSchema):
     access_token: str
-    token_type: Literal["bearer"] = "bearer"
+    token_type: Literal["bearer"] = "bearer"  # noqa: S105 - тип токена по RFC 6750, не секрет
     expires_in: int  # секунд

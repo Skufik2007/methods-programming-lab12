@@ -20,7 +20,7 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 MAX_BOOKING_DAYS_AHEAD = 90  # П1: запись не дальше чем на столько дней вперёд
@@ -70,7 +70,7 @@ def _to_local_naive(value: datetime, tz: ZoneInfo) -> datetime:
 
 def _local_to_utc(local_naive: datetime, tz: ZoneInfo) -> datetime:
     """Местное «настенное» время -> aware UTC."""
-    return local_naive.replace(tzinfo=tz).astimezone(timezone.utc)
+    return local_naive.replace(tzinfo=tz).astimezone(UTC)
 
 
 def validate_booking_window(

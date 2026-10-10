@@ -262,9 +262,7 @@ async def appointments_per_day(session: AsyncSession, date_from: date, date_to: 
 # --------------------------------------------------------------------------- #
 
 
-async def top_diagnoses(
-    session: AsyncSession, date_from: date, date_to: date, limit: int
-) -> list[DiagnosisCountOut]:
+async def top_diagnoses(session: AsyncSession, date_from: date, date_to: date, limit: int) -> list[DiagnosisCountOut]:
     """Самые частые коды МКБ-10 среди записей медкарты, созданных за период.
 
     Наружу уходят только код и число; при равенстве чисел порядок по коду.

@@ -141,12 +141,7 @@ async def _lock_row(session: AsyncSession, model: type[Doctor] | type[Appointmen
 async def _lock_doctor(session: AsyncSession, doctor_id: int) -> Doctor:
     """Читает врача и блокирует его строку до конца транзакции (П6)."""
     await _lock_row(session, Doctor, doctor_id)
-    stmt = (
-        select(Doctor)
-        .where(Doctor.id == doctor_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
+    stmt = select(Doctor).where(Doctor.id == doctor_id).with_for_update().execution_options(populate_existing=True)
     doctor = await session.scalar(stmt)
     if doctor is None:
         raise NotFoundError("Doctor not found")
@@ -231,9 +226,7 @@ async def _commit(session: AsyncSession, conflict_message: str) -> None:
         raise
 
 
-async def _load_visible(
-    session: AsyncSession, actor: Actor, appointment_id: int, *, lock: bool
-) -> Appointment:
+async def _load_visible(session: AsyncSession, actor: Actor, appointment_id: int, *, lock: bool) -> Appointment:
     """Загружает запись, если она видна пользователю; иначе ``NotFoundError`` (404).
 
     При ``lock=True`` строка блокируется (``FOR UPDATE``) и перечитывается из БД.
@@ -461,9 +454,7 @@ async def change_status(
     return appointment
 
 
-async def list_free_slots(
-    session: AsyncSession, doctor_id: int, day: date, *, now: datetime
-) -> list[scheduling.Slot]:
+async def list_free_slots(session: AsyncSession, doctor_id: int, day: date, *, now: datetime) -> list[scheduling.Slot]:
     """Свободные слоты врача на местную дату ``day``.
 
     Деактивированный врач слотов не имеет (пустой список). Ответ информационный:

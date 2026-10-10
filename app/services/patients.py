@@ -53,9 +53,7 @@ def _visibility_clause(actor: Actor) -> ColumnElement[bool] | None:
     return false()
 
 
-async def list_patients(
-    session: AsyncSession, user: User, q: str | None, *, limit: int, offset: int
-) -> list[Patient]:
+async def list_patients(session: AsyncSession, user: User, q: str | None, *, limit: int, offset: int) -> list[Patient]:
     """Список пациентов (admin / registrar); ``q`` - подстрока ФИО (без учёта регистра) или номера полиса."""
     _ensure_staff(user)
     stmt = select(Patient)

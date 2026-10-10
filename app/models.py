@@ -11,7 +11,7 @@
 """
 
 import enum
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from typing import Optional
 
 from sqlalchemy import (
@@ -54,7 +54,7 @@ class Base(DeclarativeBase):
 
 def utc_now() -> datetime:
     """Текущий момент как timezone-aware datetime в UTC."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class UTCDateTime(TypeDecorator[datetime]):
@@ -74,14 +74,14 @@ class UTCDateTime(TypeDecorator[datetime]):
             return None
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("naive datetime is not allowed: use timezone-aware datetime")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
     def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
         if value is None:
             return None
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
 
 class UserRole(enum.StrEnum):

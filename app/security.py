@@ -12,7 +12,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import bcrypt
@@ -86,9 +86,7 @@ async def verify_password_async(password: str, password_hash: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
-def create_access_token(
-    user_id: int, role: UserRole, *, version: int, expires_delta: timedelta | None = None
-) -> str:
+def create_access_token(user_id: int, role: UserRole, *, version: int, expires_delta: timedelta | None = None) -> str:
     """Создаёт подписанный JWT (HS256) с полями ``sub``, ``role``, ``ver``, ``exp``.
 
     ``version`` - текущее ``User.token_version``; параметр обязателен, чтобы его нельзя было забыть.
@@ -134,7 +132,7 @@ def decode_access_token(token: str) -> TokenPayload:
             user_id=int(claims["sub"]),
             role=UserRole(claims["role"]),
             version=_strict_int(claims["ver"]),
-            expires_at=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
+            expires_at=datetime.fromtimestamp(claims["exp"], tz=UTC),
         )
     except (jwt.PyJWTError, KeyError, ValueError, TypeError) as exc:
         raise TokenError("invalid token") from exc

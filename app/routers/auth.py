@@ -72,8 +72,7 @@ async def register(data: RegisterIn, session: SessionDep) -> User:
         raise ConflictError("Email is already registered")
     if await session.scalar(select(Patient.id).where(Patient.policy_number == data.policy_number)) is not None:
         raise ConflictError(
-            "A patient with this policy number already exists; "
-            "please contact the clinic registrar to link your account"
+            "A patient with this policy number already exists; please contact the clinic registrar to link your account"
         )
 
     # bcrypt - после проверок и до записи: ни лишней нагрузки на CPU для заведомо отказных
