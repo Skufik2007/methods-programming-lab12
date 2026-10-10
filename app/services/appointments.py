@@ -433,6 +433,10 @@ async def change_status(
     if target in (AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW) and now < appointment.starts_at:
         raise BusinessRuleError("The appointment has not started yet")
     if target == AppointmentStatus.CANCELLED:
+        # Начавшийся или прошедший приём не отменяют: иначе неявка превращается в «отмену»
+        # и пропадает из статистики no_show, а слот в прошлом освобождается задним числом.
+        if now >= appointment.starts_at:
+            raise BusinessRuleError("The appointment has already started; it can only be completed or marked no-show")
         _ensure_patient_deadline(actor, appointment, now=now)
 
     appointment.status = target

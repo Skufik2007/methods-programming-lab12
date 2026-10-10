@@ -8,7 +8,7 @@ import itertools
 import os
 import tempfile
 from collections.abc import AsyncIterator, Callable
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 from pathlib import Path
 
 _DB_DIR = Path(tempfile.mkdtemp(prefix="clinic-tests-"))
@@ -25,7 +25,7 @@ from app.routers.appointments import get_now  # noqa: E402
 from app.security import create_access_token, hash_password  # noqa: E402
 
 # Понедельник 12.10.2026, 09:00 по Москве: «текущий момент» во всех тестах.
-FROZEN_NOW = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+FROZEN_NOW = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 PASSWORD = "Password123"
 _PASSWORD_HASH = hash_password(PASSWORD)  # bcrypt медленный: один хэш на все тесты
 _email_seq = itertools.count(1)
