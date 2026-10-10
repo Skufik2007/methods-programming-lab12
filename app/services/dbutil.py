@@ -2,38 +2,16 @@
 
 ``ci_contains`` / ``ci_equals`` сравнивают через ``lower()``. В PostgreSQL ``lower()`` корректно
 работает с кириллицей, если база в UTF-8 и локаль не ``C``. Встроенный ``lower()`` SQLite
-понимает только ASCII, поэтому для SQLite (тесты) при каждом подключении регистрируется
-Python-версия ``lower``: иначе поиск «иванов» не находил бы «Иванов». Обработчик повешен
-на класс ``Engine``, так что действует и на движки, которые тесты создают сами. Если
-зарегистрировать функцию не удалось, поиск продолжает работать, но регистр игнорируется
-только для ASCII.
+понимает только ASCII, поэтому для SQLite его Unicode-версию регистрирует сам engine
+(``app.db.create_engine``) на каждом соединении.
 """
 
-from typing import Any
-
-from sqlalchemy import ColumnElement, String, event, func
-from sqlalchemy.engine import Engine
+from sqlalchemy import ColumnElement, String, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.errors import ConflictError, is_unique_violation
-
-
-def _py_lower(value: str | None) -> str | None:
-    """Unicode-версия SQL-функции ``lower`` для SQLite."""
-    return None if value is None else value.lower()
-
-
-@event.listens_for(Engine, "connect")
-def _register_sqlite_unicode_lower(dbapi_connection: Any, _connection_record: Any) -> None:
-    """Подменяет встроенную ASCII-версию ``lower`` в соединениях SQLite (sqlite3 и aiosqlite)."""
-    if "sqlite" not in type(dbapi_connection).__module__:
-        return
-    try:
-        dbapi_connection.create_function("lower", 1, _py_lower, deterministic=True)
-    except Exception:  # noqa: BLE001 - без регистрации остаётся ASCII-версия, это не авария
-        return
 
 
 def ci_contains(column: InstrumentedAttribute[str], needle: str) -> ColumnElement[bool]:

@@ -4,6 +4,10 @@
 """
 
 import asyncio
+import os
+import subprocess
+import sys
+import textwrap
 from datetime import date, datetime, timedelta
 
 import httpx
@@ -102,3 +106,27 @@ async def test_04_concurrent_overlapping_bookings_one_wins(
             select(func.count()).select_from(Appointment).where(Appointment.status != AppointmentStatus.CANCELLED)
         )
     assert active == 1
+
+
+def test_05_sqlite_unicode_lower_does_not_depend_on_imports():
+    # Отдельный процесс импортирует только app.db — как скрипт заполнения БД или миграция.
+    # Раньше Unicode-lower регистрировался глобальным обработчиком в app.services.dbutil,
+    # и без этого импорта SQL lower('ИВАНОВ') возвращал 'ИВАНОВ'.
+    code = textwrap.dedent(
+        """
+        import asyncio
+        from sqlalchemy import text
+        from app import db
+
+        async def main():
+            async with db.engine.connect() as conn:
+                print((await conn.execute(text("select lower('ИВАНОВ')"))).scalar())
+
+        asyncio.run(main())
+        """
+    )
+    env = {**os.environ, "DATABASE_URL": "sqlite+aiosqlite:///:memory:", "PYTHONIOENCODING": "utf-8"}
+    result = subprocess.run(  # noqa: S603 - фиксированная команда, без пользовательского ввода
+        [sys.executable, "-c", code], capture_output=True, encoding="utf-8", env=env, check=True, timeout=60
+    )
+    assert result.stdout.strip() == "иванов"

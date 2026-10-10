@@ -14,23 +14,33 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.config import get_settings
 
 
+def _unicode_lower(value: str | None) -> str | None:
+    """Unicode-версия SQL-функции ``lower`` (встроенная в SQLite понимает только ASCII)."""
+    return None if value is None else value.lower()
+
+
 def create_engine(database_url: str) -> AsyncEngine:
     """Создаёт async engine.
 
-    Для SQLite (тесты) включается ``PRAGMA foreign_keys=ON``: по умолчанию SQLite
-    не проверяет внешние ключи, и тесты не ловили бы нарушения ссылочной целостности.
+    Для SQLite (тесты) на каждом соединении:
+
+    * включается ``PRAGMA foreign_keys=ON``: по умолчанию SQLite не проверяет внешние
+      ключи, и тесты не ловили бы нарушения ссылочной целостности;
+    * ``lower()`` заменяется Unicode-версией: иначе поиск без учёта регистра
+      (``app.services.dbutil.ci_contains``) не находил бы «Иванов» по запросу «иванов».
     """
     engine = create_async_engine(database_url, pool_pre_ping=True)
 
     if make_url(database_url).get_backend_name() == "sqlite":
 
         @event.listens_for(engine.sync_engine, "connect")
-        def _enable_sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) -> None:
+        def _configure_sqlite_connection(dbapi_connection: Any, _connection_record: Any) -> None:
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute("PRAGMA foreign_keys=ON")
             finally:
                 cursor.close()
+            dbapi_connection.create_function("lower", 1, _unicode_lower, deterministic=True)
 
     return engine
 
