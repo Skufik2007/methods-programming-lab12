@@ -8,3 +8,4 @@ tsconfig.test.json
 node_modules/**
 **/*.ts
 .gitignore
+demo/**
