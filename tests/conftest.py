@@ -11,8 +11,12 @@ from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, time
 from pathlib import Path
 
+# По умолчанию — временный файл SQLite; TEST_DATABASE_URL позволяет прогнать те же тесты
+# на PostgreSQL (так делает CI): блокировки FOR UPDATE и частичные индексы там настоящие.
 _DB_DIR = Path(tempfile.mkdtemp(prefix="clinic-tests-"))
-os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{(_DB_DIR / 'test.db').as_posix()}"
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL", f"sqlite+aiosqlite:///{(_DB_DIR / 'test.db').as_posix()}"
+)
 os.environ["JWT_SECRET"] = "tests-only-secret-0123456789abcdef"
 os.environ["CLINIC_TIMEZONE"] = "Europe/Moscow"
 
@@ -33,11 +37,16 @@ _email_seq = itertools.count(1)
 
 @pytest.fixture(autouse=True)
 async def _schema() -> AsyncIterator[None]:
-    """Чистая схема БД на каждый тест."""
+    """Чистая схема БД на каждый тест.
+
+    После теста пул соединений закрывается: у каждого теста свой event loop, а соединение
+    asyncpg, открытое в одном loop, нельзя использовать в другом.
+    """
     async with db.engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.drop_all)
         await conn.run_sync(models.Base.metadata.create_all)
     yield
+    await db.engine.dispose()
 
 
 @pytest.fixture
