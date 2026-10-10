@@ -8,6 +8,7 @@
 
 Только стандартная библиотека.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,6 +17,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -70,13 +72,11 @@ class LLMError(RuntimeError):
 # Работа с diff
 # --------------------------------------------------------------------------
 
+
 def is_excluded_path(path: str) -> bool:
     """True, если файл не нужно отправлять на ревью."""
     name = path.rsplit("/", 1)[-1]
-    return any(
-        fnmatch.fnmatch(name, pattern) or fnmatch.fnmatch(path, pattern)
-        for pattern in EXCLUDED_PATTERNS
-    )
+    return any(fnmatch.fnmatch(name, pattern) or fnmatch.fnmatch(path, pattern) for pattern in EXCLUDED_PATTERNS)
 
 
 def extract_path(header_line: str) -> str:
@@ -123,6 +123,7 @@ def prepare_diff(raw: str, limit: int = MAX_DIFF_CHARS) -> tuple[str, bool]:
 # Промпты и запрос к Ollama
 # --------------------------------------------------------------------------
 
+
 def sanitize_diff(diff: str) -> str:
     """Не даём diff закрыть наш тег <diff> и «выйти» в область инструкций."""
     return diff.replace("</diff>", "<\\/diff>").replace("<diff>", "<\\diff>")
@@ -157,15 +158,22 @@ def parse_chat_response(raw: bytes) -> str:
     return content.strip()
 
 
+def require_http_url(url: str) -> str:
+    """Разрешает только http(s): urlopen умеет и file://, а адрес Ollama приходит из окружения."""
+    if urllib.parse.urlsplit(url).scheme not in {"http", "https"}:
+        raise ValueError(f"разрешены только http(s)-адреса: {url!r}")
+    return url
+
+
 def chat(base_url: str, payload: dict[str, Any], timeout: float) -> str:
-    request = urllib.request.Request(
-        f"{base_url.rstrip('/')}/api/chat",
+    request = urllib.request.Request(  # noqa: S310 - схема проверена require_http_url
+        require_http_url(f"{base_url.rstrip('/')}/api/chat"),
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - см. выше
             return parse_chat_response(response.read())
     except urllib.error.HTTPError as exc:
         raise LLMError(f"Ollama вернула HTTP {exc.code}") from exc
@@ -184,6 +192,7 @@ def ask(base_url: str, model: str, task: str, diff: str, timeout: float) -> str:
 # --------------------------------------------------------------------------
 # Тело комментария и поиск своего комментария
 # --------------------------------------------------------------------------
+
 
 def clip(text: str, limit: int = MAX_SECTION_CHARS) -> str:
     """Комментарий GitHub ограничен 65536 символами - режем каждый раздел."""
@@ -239,6 +248,7 @@ def find_own_comment(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
 # GitHub REST API
 # --------------------------------------------------------------------------
 
+
 def github_request(
     method: str,
     url: str,
@@ -247,8 +257,8 @@ def github_request(
     timeout: float = 30,
 ) -> Any:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    request = urllib.request.Request(
-        url,
+    request = urllib.request.Request(  # noqa: S310 - схема проверена require_http_url
+        require_http_url(url),
         data=data,
         method=method,
         headers={
@@ -259,7 +269,7 @@ def github_request(
             "User-Agent": "ai-review-workflow",
         },
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - см. выше
         return json.loads(response.read() or b"null")
 
 
@@ -289,6 +299,7 @@ def upsert_comment(api_url: str, repo: str, pr: str, token: str, body: str) -> s
 # --------------------------------------------------------------------------
 # Подкоманды
 # --------------------------------------------------------------------------
+
 
 def read_text(path: str) -> str:
     with open(path, encoding="utf-8", errors="replace") as handle:
