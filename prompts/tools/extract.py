@@ -1,7 +1,9 @@
 """Извлекает файлы из ответа модели (Markdown) в проект без ручных правок.
 
 Ожидаемый формат ответа: заголовок `### путь/к/файлу` (путь может быть в обратных
-кавычках), за ним — блок кода с полным содержимым файла.
+кавычках), за ним — блок кода с полным содержимым файла. Между заголовком и блоком
+допускается поясняющий текст. Путь — ASCII, с точкой или косой чертой (`app/main.py`,
+`.dockerignore`), либо одно из имён без расширения (`Dockerfile`, `Makefile`).
 
     python prompts/tools/extract.py prompts/task1-webapp/P1-response.md
     python prompts/tools/extract.py <ответ.md> --dry-run      # только показать список
@@ -18,7 +20,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-HEADING = re.compile(r"^#{2,4}\s+`?(?P<path>[\w./-]+\.[\w]+)`?\s*$")
+HEADING = re.compile(r"^#{2,4}\s+`?(?P<path>[A-Za-z0-9_./-]+)`?\s*$")
+BARE_NAMES = frozenset({"Dockerfile", "Makefile"})
 FENCE = re.compile(r"^(?P<fence>`{3,}|~{3,})")
 
 
@@ -28,13 +31,14 @@ def extract(markdown: str) -> dict[str, str]:
     i = 0
     while i < len(lines):
         match = HEADING.match(lines[i])
-        if not match:
+        if not match or not ("." in match["path"] or "/" in match["path"] or match["path"] in BARE_NAMES):
             i += 1
             continue
         path = match["path"]
-        # Ищем открывающий блок кода сразу после заголовка (допускаются пустые строки).
+        # Ищем открывающий блок кода после заголовка; пояснения до него пропускаются,
+        # но не дальше следующего заголовка.
         j = i + 1
-        while j < len(lines) and not lines[j].strip():
+        while j < len(lines) and not FENCE.match(lines[j]) and not lines[j].startswith("#"):
             j += 1
         fence = FENCE.match(lines[j]) if j < len(lines) else None
         if not fence:
