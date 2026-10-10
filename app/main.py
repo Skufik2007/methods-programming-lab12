@@ -30,10 +30,7 @@ from app.routers import users as users_router
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # Строгая политика для всего приложения: только свои ресурсы, никаких inline-скриптов и стилей.
-CSP_STRICT = (
-    "default-src 'self'; script-src 'self'; style-src 'self'; "
-    "img-src 'self' data:; frame-ancestors 'none'"
-)
+CSP_STRICT = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'"
 
 # Ослабленная политика ТОЛЬКО для /docs и /redoc. Swagger UI и ReDoc, которые отдаёт FastAPI:
 #   * грузят скрипты и стили с cdn.jsdelivr.net (swagger-ui-dist, redoc);
@@ -126,9 +123,7 @@ def create_app() -> FastAPI:
     # Пути документации берём из самого приложения: если их переименуют, исключение для CSP
     # переедет вместе с ними. Добавляется последним => middleware самый внешний.
     docs_paths = {
-        path
-        for path in (app.docs_url, app.redoc_url, app.swagger_ui_oauth2_redirect_url)
-        if path is not None
+        path for path in (app.docs_url, app.redoc_url, app.swagger_ui_oauth2_redirect_url) if path is not None
     }
     app.add_middleware(SecurityHeadersMiddleware, relaxed_csp_paths=docs_paths)
 
