@@ -45,7 +45,13 @@ def _upper(value: str) -> str:
 
 
 def _to_utc(value: datetime) -> datetime:
-    return value.astimezone(timezone.utc)
+    # Значения у границ datetime (например, 0001-01-01T00:00+05:00) не переводятся в UTC:
+    # OverflowError не является ValueError, Pydantic его не перехватывает, и клиент
+    # получил бы 500 вместо 422.
+    try:
+        return value.astimezone(timezone.utc)
+    except OverflowError:
+        raise ValueError("datetime is out of the supported range") from None
 
 
 def _require_naive_time(value: time) -> time:
