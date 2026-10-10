@@ -23,7 +23,7 @@ SQLite (тесты) ``FOR UPDATE`` игнорирует. Последний ру
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import ColumnElement, and_, false, select
+from sqlalchemy import ColumnElement, and_, false, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
@@ -123,8 +123,24 @@ def _schedule_of(doctor: Doctor) -> scheduling.Schedule:
     )
 
 
+async def _lock_row(session: AsyncSession, model: type[Doctor] | type[Appointment], row_id: int) -> None:
+    """Эмуляция ``FOR UPDATE`` для SQLite, где этот оператор игнорируется.
+
+    Пустой UPDATE (``id = id``) открывает пишущую транзакцию и берёт блокировку записи на всю
+    базу до commit/rollback: конкурирующая операция ждёт её, а потом видит уже
+    зафиксированные данные. Без этого два одновременных запроса на пересекающееся время
+    к одному врачу проходили оба. В PostgreSQL ничего не делает: там работает ``FOR UPDATE``.
+    """
+    if session.bind.dialect.name != "sqlite":
+        return
+    await session.execute(
+        update(model).where(model.id == row_id).values(id=model.id).execution_options(synchronize_session=False)
+    )
+
+
 async def _lock_doctor(session: AsyncSession, doctor_id: int) -> Doctor:
     """Читает врача и блокирует его строку до конца транзакции (П6)."""
+    await _lock_row(session, Doctor, doctor_id)
     stmt = (
         select(Doctor)
         .where(Doctor.id == doctor_id)
@@ -227,6 +243,7 @@ async def _load_visible(
     if clause is not None:
         stmt = stmt.where(clause)
     if lock:
+        await _lock_row(session, Appointment, appointment_id)
         stmt = stmt.with_for_update().execution_options(populate_existing=True)
     appointment = await session.scalar(stmt)
     if appointment is None:

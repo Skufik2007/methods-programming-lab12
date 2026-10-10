@@ -3,12 +3,15 @@
 Номер в имени теста совпадает с номером находки в отчёте.
 """
 
+import asyncio
 from datetime import date, datetime, timedelta
 
 import httpx
+from sqlalchemy import func, select
 
+from app import db
 from app.main import app
-from app.models import Patient, User, UserRole
+from app.models import Appointment, AppointmentStatus, Patient, User, UserRole
 from app.routers.appointments import get_now
 
 
@@ -68,3 +71,34 @@ async def test_03_started_appointment_cannot_be_cancelled(
     assert cancel.json()["detail"].startswith("The appointment has already started")
     assert no_show.status_code == 200
     assert no_show.json()["status"] == "no_show"
+
+
+async def test_04_concurrent_overlapping_bookings_one_wins(
+    client: httpx.AsyncClient, session, make_user, make_doctor, auth, now: datetime
+):
+    registrar = await make_user(UserRole.REGISTRAR)
+    doctor = await make_doctor()
+    first, second = await _patient(session, "3"), await _patient(session, "4")
+    start = now + timedelta(hours=1)
+
+    def body(patient: Patient, starts_at: datetime) -> dict[str, object]:
+        return {
+            "doctor_id": doctor.id,
+            "patient_id": patient.id,
+            "starts_at": starts_at.isoformat(),
+            "ends_at": (start + timedelta(hours=1)).isoformat(),
+        }
+
+    # Интервалы 10:00-11:00 и 10:30-11:00 пересекаются, но начинаются в разное время:
+    # частичный уникальный индекс (doctor_id, starts_at) такую пару не ловит.
+    responses = await asyncio.gather(
+        client.post("/api/appointments", json=body(first, start), headers=auth(registrar)),
+        client.post("/api/appointments", json=body(second, start + timedelta(minutes=30)), headers=auth(registrar)),
+    )
+
+    assert sorted(r.status_code for r in responses) == [201, 409]
+    async with db.SessionFactory() as fresh:
+        active = await fresh.scalar(
+            select(func.count()).select_from(Appointment).where(Appointment.status != AppointmentStatus.CANCELLED)
+        )
+    assert active == 1
