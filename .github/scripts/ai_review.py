@@ -143,7 +143,9 @@ def build_payload(model: str, messages: list[dict[str, str]]) -> dict[str, Any]:
         "messages": messages,
         "stream": False,
         "keep_alive": "10m",
-        "options": {"temperature": 0.2, "num_ctx": 16384},
+        # num_predict и repeat_penalty: маленькая модель на CPU может зациклиться и генерировать
+        # до заполнения контекста — первый запуск на PR #1 упёрся в таймаут 600 с.
+        "options": {"temperature": 0.2, "num_ctx": 16384, "num_predict": 1024, "repeat_penalty": 1.1},
     }
 
 
