@@ -52,6 +52,9 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["app"]
 branch = true
+# SQLAlchemy async выполняет запросы через greenlet: без этого coverage теряет трассировку
+# после переключения greenlet и недосчитывает строки сервисного слоя.
+concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
 show_missing = true
